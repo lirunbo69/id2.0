@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 type Shop = {
   id: string;
@@ -48,6 +48,14 @@ export default function ShopPageClient({ shop, categories, products, shopCode, a
   const [search, setSearch] = useState('');
   const [showContact, setShowContact] = useState(false);
   const productRefs = useRef<Record<string, HTMLElement | null>>({});
+
+  useEffect(() => {
+    const prev = document.documentElement.getAttribute('data-theme');
+    document.documentElement.setAttribute('data-theme', 'light');
+    return () => {
+      document.documentElement.setAttribute('data-theme', prev || 'dark');
+    };
+  }, []);
 
   const filteredProducts = activeCategory
     ? products.filter((p) => p.category_id === activeCategory)

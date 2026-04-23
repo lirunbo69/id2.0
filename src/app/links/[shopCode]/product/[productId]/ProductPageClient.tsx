@@ -37,6 +37,14 @@ export default function ProductPageClient({ shopCode, shopName, product }: Produ
   const isAutoDelivery = ['card_key', 'account_password', 'link', 'custom_text'].includes(product.delivery_type);
 
   useEffect(() => {
+    const prev = document.documentElement.getAttribute('data-theme');
+    document.documentElement.setAttribute('data-theme', 'light');
+    return () => {
+      document.documentElement.setAttribute('data-theme', prev || 'dark');
+    };
+  }, []);
+
+  useEffect(() => {
     if (!state.ok && state.message) {
       window.alert(state.message);
     }
