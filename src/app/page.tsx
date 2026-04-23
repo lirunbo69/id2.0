@@ -28,10 +28,23 @@ export default function HomePage() {
       <section style={s.heroWrap}>
         <div style={s.glowA} />
         <div style={s.glowB} />
+        <div style={s.heroTopBar}>
+          <a href="/" style={s.brand}>
+            <span style={s.brandMark}>
+              <span style={s.brandMarkM}>M</span>
+              <span style={s.brandMarkT}>T</span>
+            </span>
+            <span style={s.brandTextWrap}>
+              <span style={s.brandTitle}>MT虚拟商品自动发货系统</span>
+              <span style={s.brandSubTitle}>Mtgo旗下产品</span>
+            </span>
+          </a>
+        </div>
         <div style={s.hero}>
           <div style={s.left}>
             <span style={s.badge}>虚拟商品寄售与自动发货平台</span>
-            <h1 style={s.h1}>让虚拟商品交易网站，拥有更高级的白天首页体验</h1>
+            <h1 style={s.h1}>让虚拟商品交易平台拥有更好的客户体验</h1>
+            <p style={s.heroLead}>无人值守，增加被动收入。</p>
             <p style={s.desc}>
               面向虚拟商品经营场景，提供店铺展示、商品管理、库存导入、订单承接与自动发货能力，帮助商户更高效地完成交易闭环。
             </p>
@@ -143,9 +156,18 @@ const s: Record<string, React.CSSProperties> = {
   glowA: { position: 'absolute', left: -80, top: -120, width: 360, height: 360, borderRadius: '50%', background: 'radial-gradient(circle, rgba(96,165,250,.14), transparent 72%)' },
   glowB: { position: 'absolute', right: -120, top: 30, width: 420, height: 420, borderRadius: '50%', background: 'radial-gradient(circle, rgba(167,139,250,.10), transparent 72%)' },
   hero: { position: 'relative', zIndex: 1, maxWidth: 1240, margin: '0 auto', display: 'grid', gridTemplateColumns: '1.05fr .95fr', gap: 28 },
+  heroTopBar: { position: 'relative', zIndex: 1, maxWidth: 1240, margin: '0 auto 28px', display: 'flex', alignItems: 'center' },
+  brand: { display: 'inline-flex', alignItems: 'center', gap: 14, textDecoration: 'none' },
+  brandMark: { width: 58, height: 58, borderRadius: 18, background: 'linear-gradient(135deg,#2563eb,#4f46e5)', display: 'grid', placeItems: 'center', position: 'relative', overflow: 'hidden', boxShadow: '0 16px 34px rgba(59,130,246,.24)' },
+  brandMarkM: { position: 'absolute', left: 10, top: 10, fontSize: 26, fontWeight: 900, color: '#ffffff', letterSpacing: '-.06em' },
+  brandMarkT: { position: 'absolute', right: 10, bottom: 8, fontSize: 28, fontWeight: 900, color: 'rgba(255,255,255,.92)', letterSpacing: '-.08em' },
+  brandTextWrap: { display: 'grid', gap: 2 },
+  brandTitle: { fontSize: 24, lineHeight: 1.2, fontWeight: 800, color: '#0f172a' },
+  brandSubTitle: { fontSize: 13, color: '#64748b', letterSpacing: '.04em' },
   left: { padding: '24px 8px 12px' },
   badge: { display: 'inline-flex', padding: '8px 14px', borderRadius: 999, background: 'rgba(59,130,246,.08)', color: '#3b82f6', fontSize: 13, fontWeight: 700 },
-  h1: { margin: '20px 0 18px', fontSize: 56, lineHeight: 1.08, color: '#0f172a', letterSpacing: '-.03em' },
+  h1: { margin: '20px 0 10px', fontSize: 56, lineHeight: 1.08, color: '#0f172a', letterSpacing: '-.03em' },
+  heroLead: { margin: '0 0 14px', color: '#4f46e5', fontSize: 20, lineHeight: 1.6, fontWeight: 700 },
   desc: { margin: 0, maxWidth: 760, color: '#475569', fontSize: 18, lineHeight: 1.9 },
   btnRow: { display: 'flex', gap: 14, flexWrap: 'wrap', marginTop: 30 },
   primary: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '14px 22px', borderRadius: 14, background: 'linear-gradient(135deg,#2563eb,#4f46e5)', color: '#fff', fontWeight: 700, textDecoration: 'none', boxShadow: '0 18px 40px rgba(59,130,246,.18)' },

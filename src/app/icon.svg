@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="mt-gradient" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#2563eb" />
+      <stop offset="100%" stop-color="#4f46e5" />
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="56" height="56" rx="18" fill="url(#mt-gradient)" />
+  <path d="M14 44V20h6l8 11 8-11h6v24h-5V29l-9 12-9-12v15z" fill="#fff" fill-opacity="0.98" />
+  <path d="M40 20h14v5h-4.5V44h-5V25H40z" fill="#dbeafe" />
+</svg>

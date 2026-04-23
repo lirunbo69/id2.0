@@ -3,8 +3,8 @@ import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 
 export const metadata: Metadata = {
-  title: '千寻寄售平台复刻版',
-  description: '基于 Next.js + Supabase 的虚拟商品自动发货 SaaS 平台。',
+  title: 'MT虚拟商品自动发货系统',
+  description: 'MT虚拟商品自动发货系统，面向虚拟商品经营场景提供自动发货与店铺展示能力。',
 };
 
 const themeInitScript = `
