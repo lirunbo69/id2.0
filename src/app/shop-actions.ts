@@ -31,7 +31,7 @@ async function getSiteUrl() {
 }
 
 async function getOrderPaymentSnapshot(orderNo: string) {
-  const supabase = await createServerSupabaseClient();
+  const supabase = createServiceRoleSupabaseClient();
   const { data, error } = await supabase
     .from('orders')
     .select('order_no, status, payable_amount, product_snapshot')
@@ -380,7 +380,7 @@ export async function getAlipayPayUrl(orderNo: string, amount: number, subject: 
 }
 
 export async function getOrderDetail(orderNo: string) {
-  const supabase = await createServerSupabaseClient();
+  const supabase = createServiceRoleSupabaseClient();
   await releaseExpiredPendingOrders();
 
   const { data, error } = await supabase
