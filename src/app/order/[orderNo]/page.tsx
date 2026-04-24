@@ -1,11 +1,29 @@
 import { getOrderDetail, initiateAlipayPaymentAction, simulatePayOrderAction } from '@/app/shop-actions';
+import { isAlipayTradeSuccess, verifyAlipayNotify } from '@/lib/alipay';
+import { processOrderPayment } from '@/lib/order-flow';
 
 type OrderDetailPageProps = {
   params: Promise<{ orderNo: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
-export default async function OrderDetailPage({ params }: OrderDetailPageProps) {
+function normalizeSearchParams(searchParams: Record<string, string | string[] | undefined>) {
+  const entries = Object.entries(searchParams).map(([key, value]) => [key, Array.isArray(value) ? value[0] || '' : value || '']);
+  return Object.fromEntries(entries) as Record<string, string>;
+}
+
+export default async function OrderDetailPage({ params, searchParams }: OrderDetailPageProps) {
   const { orderNo } = await params;
+  const resolvedSearchParams = normalizeSearchParams(await searchParams);
+
+  const returnedOrderNo = String(resolvedSearchParams.out_trade_no || resolvedSearchParams.order_no || '').trim();
+  const returnedTradeStatus = String(resolvedSearchParams.trade_status || '').trim();
+  const shouldSyncReturnedPayment = returnedOrderNo === orderNo && isAlipayTradeSuccess(returnedTradeStatus) && verifyAlipayNotify(resolvedSearchParams);
+
+  if (shouldSyncReturnedPayment) {
+    await processOrderPayment(orderNo);
+  }
+
   const result = await getOrderDetail(orderNo);
 
   async function simulatePay(formData: FormData) {
