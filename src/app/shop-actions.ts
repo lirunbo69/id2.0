@@ -251,6 +251,21 @@ export async function createOrderAction(formData: FormData) {
   revalidatePath(`/order/${orderNo}`);
   revalidatePath('/merchant/inventory');
   revalidatePath('/merchant/products');
+
+  const siteUrl = await getSiteUrl();
+  const hasAlipayConfig = !!(process.env.ALIPAY_APP_ID && process.env.ALIPAY_APP_PRIVATE_KEY && process.env.ALIPAY_PUBLIC_KEY);
+
+  if (hasAlipayConfig) {
+    const payUrl = buildAlipayPagePayUrl({
+      orderNo,
+      amount: totalAmount,
+      subject: product.name || `订单 ${orderNo}`,
+      notifyUrl: `${siteUrl}/api/payment/callback`,
+      returnUrl: `${siteUrl}/order/${orderNo}`,
+    });
+    redirect(payUrl);
+  }
+
   redirect(`/order/${orderNo}`);
 }
 
@@ -262,6 +277,9 @@ export async function createOrderWithFeedbackAction(
     await createOrderAction(formData);
     return { ok: true, message: '' };
   } catch (error) {
+    if (error instanceof Error && 'digest' in error) {
+      throw error;
+    }
     return {
       ok: false,
       message: error instanceof Error ? error.message : '创建订单失败。',

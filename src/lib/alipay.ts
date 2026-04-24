@@ -39,7 +39,17 @@ function getConfig(): AlipayConfig {
 }
 
 function normalizePem(value: string) {
-  return value.replace(/\\n/g, '\n').trim();
+  let pem = value.replace(/\\n/g, '\n').trim();
+
+  if (!pem.startsWith('-----')) {
+    const isPrivate = pem.length > 500;
+    const label = isPrivate ? 'RSA PRIVATE KEY' : 'PUBLIC KEY';
+    const body = pem.replace(/[\r\n\s]/g, '');
+    const lines = body.match(/.{1,64}/g) || [];
+    pem = `-----BEGIN ${label}-----\n${lines.join('\n')}\n-----END ${label}-----`;
+  }
+
+  return pem;
 }
 
 function formatTimestamp(date = new Date()) {
