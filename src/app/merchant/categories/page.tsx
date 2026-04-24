@@ -1,6 +1,6 @@
 import { createMerchantCategoryAction, deleteMerchantCategoryAction, getMerchantCategories, toggleMerchantCategoryAction, updateMerchantCategoryAction } from '@/app/merchant/actions';
 
-export default async function MerchantCategoriesPage() {
+export default async function MerchantCategoriesPage({ searchParams }: { searchParams: Promise<{ success?: string }> }) {
   async function submitCategory(formData: FormData) {
     'use server';
     await createMerchantCategoryAction(formData);
@@ -22,6 +22,7 @@ export default async function MerchantCategoriesPage() {
   }
 
   const result = await getMerchantCategories();
+  const { success = '' } = await searchParams;
 
   if (!result.ok) {
     return <main style={{ display: 'grid', gap: 24 }}><section style={cardStyle}><h1 style={{ marginTop: 0 }}>分类管理</h1><p style={{ color: '#fca5a5' }}>{result.message}</p></section></main>;
@@ -38,9 +39,12 @@ export default async function MerchantCategoriesPage() {
 
       {!result.hasShop ? <section style={cardStyle}><div style={warnStyle}>请先创建店铺，再创建商品分类。</div></section> : null}
 
+      {success ? <section style={successStyle}>{success}</section> : null}
+
       <section style={cardStyle}>
         <h2 style={{ marginTop: 0 }}>新建分类</h2>
         <form action={submitCategory} style={{ display: 'grid', gap: 16, marginTop: 16 }}>
+          <input type="hidden" name="returnTo" value="/merchant/categories" />
           <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16 }}>
             <label style={{ display: 'grid', gap: 8 }}><span>分类名称</span><input name="name" required style={inputStyle} /></label>
             <label style={{ display: 'grid', gap: 8 }}><span>排序</span><input name="sortOrder" type="number" defaultValue="0" style={inputStyle} /></label>
@@ -110,6 +114,7 @@ export default async function MerchantCategoriesPage() {
 
 const cardStyle: React.CSSProperties = { padding: 20, borderRadius: 20, border: '1px solid rgba(148,163,184,.12)', background: 'var(--card)', boxShadow: '0 10px 30px rgba(2,6,23,.22)' };
 const warnStyle: React.CSSProperties = { padding: 16, borderRadius: 14, background: 'rgba(251,191,36,.1)', color: '#fcd34d' };
+const successStyle: React.CSSProperties = { padding: 16, borderRadius: 14, background: 'rgba(16,185,129,.12)', color: '#86efac', border: '1px solid rgba(16,185,129,.22)' };
 const inputStyle: React.CSSProperties = { padding: '12px 14px', borderRadius: 12, border: '1px solid rgba(148,163,184,.16)', background: 'rgba(255,255,255,.03)', color: 'var(--foreground)' };
 const textareaStyle: React.CSSProperties = { ...inputStyle, resize: 'vertical' };
 const buttonStyle: React.CSSProperties = { width: 'fit-content', padding: '12px 16px', borderRadius: 12, border: 'none', background: 'var(--primary)', color: '#fff', fontWeight: 700, cursor: 'pointer' };

@@ -1,7 +1,7 @@
-import { createMerchantInventoryAction, createSingleMerchantInventoryAction, getMerchantInventoryData, invalidateMerchantInventoryAction } from '@/app/merchant/actions';
+import { createMerchantInventoryAction, createSingleMerchantInventoryAction, getMerchantInventoryData, getMerchantInventoryDetail, invalidateMerchantInventoryAction, updateMerchantInventoryAction } from '@/app/merchant/actions';
 
 type MerchantInventoryPageProps = {
-  searchParams: Promise<{ productId?: string; status?: string; batchNo?: string }>;
+  searchParams: Promise<{ productId?: string; status?: string; batchNo?: string; inventoryId?: string; success?: string }>;
 };
 
 export default async function MerchantInventoryPage({ searchParams }: MerchantInventoryPageProps) {
@@ -22,7 +22,15 @@ export default async function MerchantInventoryPage({ searchParams }: MerchantIn
     await invalidateMerchantInventoryAction(formData);
   }
 
+  async function updateInventory(formData: FormData) {
+    'use server';
+    await updateMerchantInventoryAction(formData);
+  }
+
   const result = await getMerchantInventoryData(filters);
+  const selectedInventoryId = String(filters.inventoryId || '').trim();
+  const inventoryDetail = selectedInventoryId ? await getMerchantInventoryDetail(selectedInventoryId) : null;
+  const successMessage = String(filters.success || '').trim();
 
   if (!result.ok) {
     return <main style={{ display: 'grid', gap: 24 }}><section style={cardStyle}><h1 style={{ marginTop: 0 }}>库存管理</h1><p style={{ color: '#fca5a5' }}>{result.message}</p></section></main>;
@@ -45,6 +53,8 @@ export default async function MerchantInventoryPage({ searchParams }: MerchantIn
       </section>
 
       {!result.hasShop ? <section style={cardStyle}><div style={warnStyle}>请先创建店铺和商品，再导入库存。</div></section> : null}
+
+      {successMessage ? <section style={successStyle}>{successMessage}</section> : null}
 
       <section style={cardStyle}>
         <h2 style={{ marginTop: 0 }}>筛选条件</h2>
@@ -82,6 +92,7 @@ export default async function MerchantInventoryPage({ searchParams }: MerchantIn
       <section style={cardStyle}>
         <h2 style={{ marginTop: 0 }}>单条新增库存</h2>
         <form action={submitSingleInventory} style={{ display: 'grid', gap: 16, marginTop: 16 }}>
+          <input type="hidden" name="returnTo" value="/merchant/inventory" />
           <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: 16 }}>
             <label style={{ display: 'grid', gap: 8 }}>
               <span>选择商品</span>
@@ -115,6 +126,7 @@ export default async function MerchantInventoryPage({ searchParams }: MerchantIn
       <section style={cardStyle}>
         <h2 style={{ marginTop: 0 }}>批量导入库存</h2>
         <form action={submitInventory} style={{ display: 'grid', gap: 16, marginTop: 16 }}>
+          <input type="hidden" name="returnTo" value="/merchant/inventory" />
           <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr 1fr', gap: 16 }}>
             <label style={{ display: 'grid', gap: 8 }}>
               <span>选择商品</span>
@@ -143,7 +155,11 @@ export default async function MerchantInventoryPage({ searchParams }: MerchantIn
       </section>
 
       <section style={cardStyle}>
-        <div style={{ overflowX: 'auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+          <h2 style={{ margin: 0 }}>库存列表</h2>
+          {selectedInventoryId ? <a href="/merchant/inventory" style={secondaryButtonStyle}>关闭预览</a> : null}
+        </div>
+        <div style={{ overflowX: 'auto', marginTop: 16 }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid rgba(148,163,184,.12)', textAlign: 'left' }}>
@@ -167,11 +183,17 @@ export default async function MerchantInventoryPage({ searchParams }: MerchantIn
                   <td style={tdStyle}>{new Date(item.created_at).toLocaleString('zh-CN')}</td>
                   <td style={tdStyle}>
                     {item.status === 'available' ? (
-                      <form action={invalidateInventory}>
-                        <input type="hidden" name="inventoryId" value={item.id} />
-                        <button type="submit" style={actionButtonStyle}>作废</button>
-                      </form>
-                    ) : <span style={{ color: 'var(--muted)' }}>不可操作</span>}
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                        <a href={`/merchant/inventory?inventoryId=${item.id}`} style={actionLinkStyle}>预览库存</a>
+                        <form action={invalidateInventory}>
+                          <input type="hidden" name="inventoryId" value={item.id} />
+                          <input type="hidden" name="returnTo" value="/merchant/inventory" />
+                          <button type="submit" style={actionButtonStyle}>作废</button>
+                        </form>
+                      </div>
+                    ) : (
+                      <a href={`/merchant/inventory?inventoryId=${item.id}`} style={actionLinkStyle}>查看详情</a>
+                    )}
                   </td>
                 </tr>
               )) : <tr><td colSpan={7} style={emptyStyle}>暂无符合条件的库存数据。</td></tr>}
@@ -179,6 +201,43 @@ export default async function MerchantInventoryPage({ searchParams }: MerchantIn
           </table>
         </div>
       </section>
+
+      {inventoryDetail?.ok ? (
+        <section style={cardStyle}>
+          <h2 style={{ marginTop: 0 }}>库存内容预览</h2>
+          <p style={{ color: 'var(--muted)', lineHeight: 1.8, marginTop: 8 }}>
+            当前商品：{inventoryDetail.product.name}，状态：{inventoryDetail.inventory.status}
+          </p>
+          <form action={updateInventory} style={{ display: 'grid', gap: 16, marginTop: 16 }}>
+            <input type="hidden" name="inventoryId" value={inventoryDetail.inventory.id} />
+            <input type="hidden" name="returnTo" value={`/merchant/inventory?inventoryId=${inventoryDetail.inventory.id}`} />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <label style={{ display: 'grid', gap: 8 }}>
+                <span>库存类型</span>
+                <select name="contentType" defaultValue={inventoryDetail.inventory.content_type} style={inputStyle} disabled={inventoryDetail.inventory.status !== 'available'}>
+                  <option value="card_key">卡密</option>
+                  <option value="account_password">账号密码</option>
+                  <option value="link">链接</option>
+                  <option value="custom_text">文本</option>
+                </select>
+              </label>
+              <label style={{ display: 'grid', gap: 8 }}>
+                <span>批次号</span>
+                <input name="batchNo" defaultValue={inventoryDetail.inventory.batch_no || ''} style={inputStyle} disabled={inventoryDetail.inventory.status !== 'available'} />
+              </label>
+            </div>
+            <label style={{ display: 'grid', gap: 8 }}>
+              <span>库存完整内容</span>
+              <textarea name="content" rows={8} defaultValue={inventoryDetail.inventory.content_encrypted} style={textareaStyle} disabled={inventoryDetail.inventory.status !== 'available'} />
+            </label>
+            {inventoryDetail.inventory.status === 'available' ? (
+              <button type="submit" style={primaryButtonStyle}>保存修改</button>
+            ) : (
+              <div style={{ color: 'var(--muted)' }}>当前库存不是可用状态，暂不支持编辑。</div>
+            )}
+          </form>
+        </section>
+      ) : null}
     </main>
   );
 }
@@ -197,10 +256,12 @@ function getStatusBadgeStyle(status: string): React.CSSProperties {
 const cardStyle: React.CSSProperties = { padding: 20, borderRadius: 20, border: '1px solid rgba(148,163,184,.12)', background: 'var(--card)', boxShadow: '0 10px 30px rgba(2,6,23,.22)' };
 const statStyle: React.CSSProperties = { padding: 18, borderRadius: 16, background: 'rgba(255,255,255,.03)', border: '1px solid rgba(148,163,184,.12)', display: 'grid', gap: 8 };
 const warnStyle: React.CSSProperties = { padding: 16, borderRadius: 14, background: 'rgba(251,191,36,.1)', color: '#fcd34d' };
+const successStyle: React.CSSProperties = { padding: 16, borderRadius: 14, background: 'rgba(16,185,129,.12)', color: '#86efac', border: '1px solid rgba(16,185,129,.22)' };
 const inputStyle: React.CSSProperties = { padding: '12px 14px', borderRadius: 12, border: '1px solid rgba(148,163,184,.16)', background: 'rgba(255,255,255,.03)', color: 'var(--foreground)' };
 const textareaStyle: React.CSSProperties = { ...inputStyle, resize: 'vertical' };
 const primaryButtonStyle: React.CSSProperties = { width: 'fit-content', padding: '12px 16px', borderRadius: 12, border: 'none', background: 'var(--primary)', color: '#fff', fontWeight: 700, cursor: 'pointer' };
 const secondaryButtonStyle: React.CSSProperties = { width: 'fit-content', padding: '12px 16px', borderRadius: 12, border: '1px solid rgba(148,163,184,.16)', background: 'rgba(255,255,255,.03)', color: '#e2e8f0' };
+const actionLinkStyle: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '8px 10px', borderRadius: 10, border: '1px solid rgba(96,165,250,.24)', background: 'rgba(59,130,246,.12)', color: '#93c5fd', textDecoration: 'none' };
 const actionButtonStyle: React.CSSProperties = { padding: '8px 10px', borderRadius: 10, border: '1px solid rgba(148,163,184,.16)', background: 'rgba(255,255,255,.03)', color: '#e2e8f0', cursor: 'pointer' };
 const thStyle: React.CSSProperties = { padding: '14px 12px', color: 'var(--muted)' };
 const tdStyle: React.CSSProperties = { padding: '14px 12px' };

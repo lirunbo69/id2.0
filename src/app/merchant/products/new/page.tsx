@@ -1,6 +1,6 @@
 import { createMerchantProductAction, getMerchantProductOptions, getMerchantShopDetail } from '@/app/merchant/actions';
 
-export default async function MerchantProductCreatePage() {
+export default async function MerchantProductCreatePage({ searchParams }: { searchParams: Promise<{ success?: string }> }) {
   async function submitProductForm(formData: FormData) {
     'use server';
 
@@ -9,6 +9,7 @@ export default async function MerchantProductCreatePage() {
 
   const shopResult = await getMerchantShopDetail();
   const optionsResult = await getMerchantProductOptions();
+  const { success = '' } = await searchParams;
 
   if (!shopResult.ok) {
     return (
@@ -39,11 +40,13 @@ export default async function MerchantProductCreatePage() {
     <main style={{ maxWidth: 1100, margin: '0 auto', padding: '32px 24px 80px' }}>
       <section style={{ padding: 28, borderRadius: 24, border: '1px solid var(--border)', background: 'var(--card)' }}>
         <h1 style={{ marginTop: 0 }}>新建商品</h1>
+        {success ? <div style={successStyle}>{success}</div> : null}
         <p style={{ color: 'var(--muted)', lineHeight: 1.8 }}>
           当前表单会直接写入 `products` 表，现已支持选择真实商品分类。
         </p>
 
         <form action={submitProductForm} style={{ display: 'grid', gap: 18, marginTop: 24 }}>
+          <input type="hidden" name="returnTo" value="/merchant/products/new" />
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 16 }}>
             <label style={{ display: 'grid', gap: 8 }}>
               <span>商品名称</span>
@@ -128,5 +131,6 @@ export default async function MerchantProductCreatePage() {
 
 const inputStyle: React.CSSProperties = { width: '100%', padding: '12px 14px', borderRadius: 12, border: '1px solid var(--border)', background: 'rgba(255,255,255,.03)', color: 'var(--foreground)' };
 const textareaStyle: React.CSSProperties = { ...inputStyle, resize: 'vertical' };
+const successStyle: React.CSSProperties = { marginBottom: 16, padding: 16, borderRadius: 14, background: 'rgba(16,185,129,.12)', color: '#86efac', border: '1px solid rgba(16,185,129,.22)' };
 const buttonStyle: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 'fit-content', padding: '14px 18px', borderRadius: 14, border: 'none', background: 'var(--primary)', color: '#fff', fontWeight: 700, cursor: 'pointer' };
 const checkboxLabelStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 8 };

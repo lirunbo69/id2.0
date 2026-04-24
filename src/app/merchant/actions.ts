@@ -25,6 +25,13 @@ function buildInventoryPreview(content: string) {
   return `${content.slice(0, 3)}****${content.slice(-3)}`;
 }
 
+function withSuccessMessage(path: string, message: string) {
+  const [pathname, queryString = ''] = path.split('?');
+  const params = new URLSearchParams(queryString);
+  params.set('success', message);
+  return `${pathname}?${params.toString()}`;
+}
+
 async function findAuthUserIdByEmail(email: string) {
   const admin = createAdminClient();
   const { data, error } = await admin.auth.admin.listUsers();
@@ -310,6 +317,7 @@ export async function createMerchantCategoryAction(formData: FormData) {
     return { ok: false as const, message: '请先创建店铺。' };
   }
 
+  const returnTo = String(formData.get('returnTo') || '/merchant/categories').trim() || '/merchant/categories';
   const name = String(formData.get('name') || '').trim();
   const description = String(formData.get('description') || '').trim();
   const sortOrder = Number(formData.get('sortOrder') || 0);
@@ -334,7 +342,7 @@ export async function createMerchantCategoryAction(formData: FormData) {
   revalidatePath('/merchant/categories');
   revalidatePath('/merchant/products/new');
 
-  return { ok: true as const, message: '分类创建成功。' };
+  redirect(withSuccessMessage(returnTo, '创建分类成功'));
 }
 
 export async function updateMerchantCategoryAction(formData: FormData) {
@@ -444,6 +452,8 @@ export async function createMerchantProductAction(formData: FormData) {
     return context;
   }
 
+  const returnTo = String(formData.get('returnTo') || '/merchant/products/new').trim() || '/merchant/products/new';
+
   const { data: shop } = await context.supabase
     .from('shops')
     .select('id, name')
@@ -519,10 +529,7 @@ export async function createMerchantProductAction(formData: FormData) {
   revalidatePath('/merchant/products/new');
   revalidatePath('/merchant/inventory');
 
-  return {
-    ok: true as const,
-    message: '商品创建成功。',
-  };
+  redirect(withSuccessMessage(returnTo, '发布商品成功'));
 }
 
 export async function createMerchantInventoryAction(formData: FormData) {
@@ -531,6 +538,7 @@ export async function createMerchantInventoryAction(formData: FormData) {
     return context;
   }
 
+  const returnTo = String(formData.get('returnTo') || '/merchant/inventory').trim() || '/merchant/inventory';
   const productId = String(formData.get('productId') || '').trim();
   const contentRaw = String(formData.get('contentRaw') || '').trim();
   const contentType = String(formData.get('contentType') || 'card_key').trim();
@@ -593,10 +601,7 @@ export async function createMerchantInventoryAction(formData: FormData) {
   revalidatePath('/merchant/inventory');
   revalidatePath('/merchant/products');
 
-  return {
-    ok: true as const,
-    message: `成功导入 ${lines.length} 条库存。`,
-  };
+  redirect(withSuccessMessage(returnTo, lines.length === 1 ? '新增库存成功' : '导入库存成功'));
 }
 
 export async function getMerchantShopDetail() {
@@ -1031,6 +1036,7 @@ export async function invalidateMerchantInventoryAction(formData: FormData) {
     return context;
   }
 
+  const returnTo = String(formData.get('returnTo') || '/merchant/inventory').trim() || '/merchant/inventory';
   const inventoryId = String(formData.get('inventoryId') || '').trim();
   if (!inventoryId) {
     return { ok: false as const, message: '缺少库存 ID。' };
@@ -1082,7 +1088,93 @@ export async function invalidateMerchantInventoryAction(formData: FormData) {
 
   revalidatePath('/merchant/inventory');
   revalidatePath('/merchant/products');
-  return { ok: true as const, message: '库存已作废。' };
+  redirect(withSuccessMessage(returnTo, '库存已作废'));
+}
+
+export async function getMerchantInventoryDetail(inventoryId: string) {
+  const context = await getCurrentMerchantContext();
+  if (!context.ok) {
+    return context;
+  }
+
+  const { data: shop } = await context.supabase
+    .from('shops')
+    .select('id')
+    .eq('merchant_id', context.merchantProfile.id)
+    .maybeSingle();
+
+  if (!shop) {
+    return { ok: false as const, message: '请先完成店铺设置。' };
+  }
+
+  const { data: inventory, error } = await context.supabase
+    .from('inventories')
+    .select('id, product_id, content_encrypted, content_preview, content_type, status, batch_no, created_at')
+    .eq('id', inventoryId)
+    .maybeSingle();
+
+  if (error || !inventory) {
+    return { ok: false as const, message: error?.message || '库存不存在。' };
+  }
+
+  const { data: product } = await context.supabase
+    .from('products')
+    .select('id, name, shop_id, stock_count')
+    .eq('id', inventory.product_id)
+    .maybeSingle();
+
+  if (!product || product.shop_id !== shop.id) {
+    return { ok: false as const, message: '你没有权限查看该库存。' };
+  }
+
+  return {
+    ok: true as const,
+    inventory,
+    product,
+  };
+}
+
+export async function updateMerchantInventoryAction(formData: FormData) {
+  const context = await getCurrentMerchantContext();
+  if (!context.ok) {
+    return context;
+  }
+
+  const inventoryId = String(formData.get('inventoryId') || '').trim();
+  const content = String(formData.get('content') || '').trim();
+  const contentType = String(formData.get('contentType') || 'card_key').trim();
+  const batchNo = String(formData.get('batchNo') || '').trim();
+  const returnTo = String(formData.get('returnTo') || '/merchant/inventory').trim() || '/merchant/inventory';
+
+  if (!inventoryId || !content) {
+    return { ok: false as const, message: '库存参数不完整。' };
+  }
+
+  const detail = await getMerchantInventoryDetail(inventoryId);
+  if (!detail.ok) {
+    return detail;
+  }
+
+  if (detail.inventory.status !== 'available') {
+    return { ok: false as const, message: '只有可用库存才能编辑。' };
+  }
+
+  const { error } = await context.supabase
+    .from('inventories')
+    .update({
+      content_encrypted: content,
+      content_preview: buildInventoryPreview(content),
+      content_type: contentType,
+      batch_no: batchNo || null,
+    })
+    .eq('id', inventoryId);
+
+  if (error) {
+    return { ok: false as const, message: error.message };
+  }
+
+  revalidatePath('/merchant/inventory');
+  redirect(withSuccessMessage(returnTo, '库存保存成功'));
 }
 
 export async function getMerchantInventoryData(searchParams?: {
