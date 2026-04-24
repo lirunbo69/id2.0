@@ -87,7 +87,9 @@ export default async function OrderDetailPage({ params, searchParams }: OrderDet
               {deliveryItems.map((item, index) => (
                 <div key={`${order.order_no}-${index}`} style={deliveryItemStyle}>
                   <div style={{ fontWeight: 700 }}>结果 {index + 1}</div>
-                  <div style={{ color: 'var(--muted)', marginTop: 8, lineHeight: 1.8 }}>{item.preview || item.content || '已生成发货结果'}</div>
+                  <div style={{ color: 'var(--muted)', marginTop: 8, lineHeight: 1.8, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+                    {item.content || item.preview || '已生成发货结果'}
+                  </div>
                 </div>
               ))}
             </div>
