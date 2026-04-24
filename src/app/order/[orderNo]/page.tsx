@@ -3,6 +3,7 @@ import { isAlipayTradeSuccess, verifyAlipayNotify } from '@/lib/alipay';
 import { processOrderPayment } from '@/lib/order-flow';
 
 import { AutoSubmitForm, OrderAutoRefresh } from './OrderAutoClient';
+import { OrderPayForm } from './OrderPayForm';
 
 type OrderDetailPageProps = {
   params: Promise<{ orderNo: string }>;
@@ -39,7 +40,7 @@ export default async function OrderDetailPage({ params, searchParams }: OrderDet
   }
 
   if (!result.ok) {
-    return <main style={{ maxWidth: 880, margin: '0 auto', padding: '48px 24px 80px' }}><section style={cardStyle}><h1 style={{ marginTop: 0 }}>订单不存在</h1><p style={{ color: '#fca5a5' }}>{result.message}</p></section></main>;
+    return <main style={{ maxWidth: 880, margin: '0 auto', padding: '24px 14px 72px' }}><section style={cardStyle}><h1 style={{ marginTop: 0, marginBottom: 10, fontSize: 'clamp(28px, 5vw, 40px)' }}>订单不存在</h1><p style={{ color: '#fca5a5', margin: 0 }}>{result.message}</p></section></main>;
   }
 
   const { order } = result;
@@ -51,7 +52,7 @@ export default async function OrderDetailPage({ params, searchParams }: OrderDet
   const shouldAutoRefresh = order.status === 'pending_payment' || order.status === 'paid';
 
   return (
-    <main style={{ maxWidth: 880, margin: '0 auto', padding: '48px 24px 80px' }}>
+    <main style={{ maxWidth: 880, margin: '0 auto', padding: '24px 14px 72px' }}>
       <AutoSubmitForm
         action={payWithAlipay}
         enabled={shouldAutoPay}
@@ -61,8 +62,8 @@ export default async function OrderDetailPage({ params, searchParams }: OrderDet
       <section style={cardStyle}>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
           <div>
-            <h1 style={{ marginTop: 0, marginBottom: 8 }}>订单详情</h1>
-            <div style={{ color: 'var(--muted)' }}>订单创建成功后，可通过订单号 + 查询密钥随时查询。</div>
+            <h1 style={{ marginTop: 0, marginBottom: 8, fontSize: 'clamp(30px, 6vw, 42px)', lineHeight: 1.1 }}>订单详情</h1>
+            <div style={{ color: 'var(--muted)', lineHeight: 1.7 }}>订单创建成功后，可通过订单号 + 查询密钥随时查询。</div>
           </div>
           <span style={getStatusStyle(order.status)}>{getStatusText(order.status)}</span>
         </div>
@@ -103,11 +104,13 @@ export default async function OrderDetailPage({ params, searchParams }: OrderDet
         </section>
 
         {canPay ? (
-          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 24 }}>
-            <form action={payWithAlipay}>
-              <input type="hidden" name="orderNo" value={order.order_no} />
-              <button type="submit" style={buttonStyle}>前往支付宝支付</button>
-            </form>
+          <div style={{ display: 'grid', gap: 12, marginTop: 24 }}>
+            <OrderPayForm
+              action={payWithAlipay}
+              orderNo={order.order_no}
+              buttonLabel="前往支付宝支付"
+              buttonStyle={buttonStyle}
+            />
             <form action={simulatePay}>
               <input type="hidden" name="orderNo" value={order.order_no} />
               <button type="submit" style={secondaryButtonStyle}>模拟支付回调并执行发货</button>
@@ -116,7 +119,7 @@ export default async function OrderDetailPage({ params, searchParams }: OrderDet
         ) : null}
 
         {shopCode && (
-          <div style={{ marginTop: 20 }}>
+          <div style={{ marginTop: 16 }}>
             <a href={`/links/${shopCode}`} style={continueBuyBtnStyle}>继续购买</a>
           </div>
         )}
@@ -127,9 +130,9 @@ export default async function OrderDetailPage({ params, searchParams }: OrderDet
 
 function InfoRow({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
   return (
-    <div style={{ display: 'grid', gap: 6, paddingBottom: 10, borderBottom: '1px solid var(--border)' }}>
-      <span style={{ color: 'var(--muted)', fontSize: 13 }}>{label}</span>
-      <strong style={{ fontFamily: mono ? 'monospace' : 'inherit', wordBreak: 'break-all' }}>{value}</strong>
+    <div style={{ display: 'grid', gap: 8, paddingBottom: 12, borderBottom: '1px solid var(--border)' }}>
+      <span style={{ color: 'var(--muted)', fontSize: 13, fontWeight: 700 }}>{label}</span>
+      <strong style={{ fontFamily: mono ? 'monospace' : 'inherit', wordBreak: 'break-all', fontSize: 17, lineHeight: 1.5 }}>{value}</strong>
     </div>
   );
 }
@@ -179,9 +182,9 @@ function getDeliveryTypeText(deliveryType: string) {
   return map[deliveryType] || deliveryType;
 }
 
-const cardStyle: React.CSSProperties = { padding: 28, borderRadius: 24, border: '1px solid var(--border)', background: 'var(--card)' };
-const panelStyle: React.CSSProperties = { padding: 20, borderRadius: 20, border: '1px solid var(--border)', background: 'var(--surface-soft)' };
-const deliveryItemStyle: React.CSSProperties = { padding: 14, borderRadius: 16, background: 'var(--surface-soft)', border: '1px solid var(--border)' };
-const buttonStyle: React.CSSProperties = { padding: '14px 18px', borderRadius: 14, border: 'none', background: 'var(--primary)', color: '#fff', fontWeight: 700, cursor: 'pointer' };
-const secondaryButtonStyle: React.CSSProperties = { padding: '14px 18px', borderRadius: 14, border: '1px solid var(--border)', background: 'transparent', color: 'var(--foreground)', fontWeight: 700, cursor: 'pointer' };
-const continueBuyBtnStyle: React.CSSProperties = { display: 'inline-flex', padding: '14px 28px', borderRadius: 14, background: 'linear-gradient(135deg,#10b981,#059669)', color: '#fff', fontWeight: 700, textDecoration: 'none', fontSize: 15 };
+const cardStyle: React.CSSProperties = { padding: 20, borderRadius: 24, border: '1px solid var(--border)', background: 'var(--card)', boxShadow: '0 18px 44px rgba(15,23,42,.08)' };
+const panelStyle: React.CSSProperties = { padding: 16, borderRadius: 20, border: '1px solid var(--border)', background: 'var(--surface-soft)' };
+const deliveryItemStyle: React.CSSProperties = { padding: 16, borderRadius: 18, background: 'var(--surface-soft)', border: '1px solid var(--border)' };
+const buttonStyle: React.CSSProperties = { width: '100%', padding: '14px 18px', borderRadius: 14, border: 'none', background: 'var(--primary)', color: '#fff', fontWeight: 800, cursor: 'pointer', fontSize: 16, boxShadow: '0 14px 28px rgba(79,70,229,.22)' };
+const secondaryButtonStyle: React.CSSProperties = { width: '100%', padding: '14px 18px', borderRadius: 14, border: '1px solid var(--border)', background: 'transparent', color: 'var(--foreground)', fontWeight: 700, cursor: 'pointer', fontSize: 15 };
+const continueBuyBtnStyle: React.CSSProperties = { display: 'inline-flex', justifyContent: 'center', width: '100%', padding: '14px 28px', borderRadius: 14, background: 'linear-gradient(135deg,#10b981,#059669)', color: '#fff', fontWeight: 800, textDecoration: 'none', fontSize: 16, boxShadow: '0 14px 28px rgba(16,185,129,.18)' };
