@@ -244,20 +244,6 @@ export async function createOrderAction(formData: FormData) {
 
   if (error || !insertedOrder) throw new Error(error?.message || '创建订单失败。');
 
-  if (isAutoDeliveryType(product.delivery_type)) {
-    const reserved = await reserveInventoryForOrder(insertedOrder.id, product.id, quantity);
-    if (!reserved) {
-      await supabase
-        .from('orders')
-        .update({
-          status: 'closed',
-          delivery_result: [{ type: 'reserve_failed', preview: '库存已被抢光，订单未能锁定库存。', content: '库存已被抢光，订单未能锁定库存。' }],
-        })
-        .eq('id', insertedOrder.id);
-      throw new Error('库存已被抢光，请刷新后重试。');
-    }
-  }
-
   revalidatePath(`/order/${orderNo}`);
   revalidatePath('/merchant/inventory');
   revalidatePath('/merchant/products');

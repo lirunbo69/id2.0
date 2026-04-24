@@ -75,16 +75,6 @@ export async function releaseOrderReservation(orderId: string) {
   }
 
   await supabase.from('inventories').update({ status: 'available', sold_order_id: null, sold_at: null }).in('id', items.map((item) => item.id));
-
-  const grouped = new Map<string, number>();
-  for (const item of items) {
-    grouped.set(item.product_id, (grouped.get(item.product_id) || 0) + 1);
-  }
-
-  for (const [productId, count] of grouped) {
-    await increaseProductStock(supabase, productId, count);
-  }
-
   return items.length;
 }
 
@@ -224,6 +214,7 @@ export async function processOrderPayment(orderNo: string) {
   const deliveryResult = reservedItems.slice(0, order.quantity).map((item) => ({ type: item.content_type, preview: item.content_preview, content: item.content_encrypted }));
 
   await supabase.from('inventories').update({ status: 'sold', sold_at: new Date().toISOString() }).in('id', inventoryIds);
+  await decreaseProductStock(supabase, order.product_id, inventoryIds.length);
   await supabase
     .from('orders')
     .update({ status: 'delivered', delivered_at: new Date().toISOString(), delivery_result: deliveryResult })
