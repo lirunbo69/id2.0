@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
 import { buildAlipayPagePayUrl } from '@/lib/alipay';
-import { createServerSupabaseClient } from '@/lib/supabase';
+import { createServerSupabaseClient, createServiceRoleSupabaseClient } from '@/lib/supabase';
 import { isAutoDeliveryType, processOrderPayment, releaseExpiredPendingOrders, reserveInventoryForOrder } from '@/lib/order-flow';
 import { resolveSiteUrl } from '@/lib/utils';
 
@@ -46,7 +46,7 @@ async function getOrderPaymentSnapshot(orderNo: string) {
 }
 
 async function getAvailableInventoryCount(productId: string) {
-  const supabase = await createServerSupabaseClient();
+  const supabase = createServiceRoleSupabaseClient();
   const { count, error } = await supabase
     .from('inventories')
     .select('id', { count: 'exact', head: true })
@@ -379,10 +379,17 @@ export async function getOrderDetail(orderNo: string) {
 
   const { data, error } = await supabase
     .from('orders')
-    .select('order_no, status, buyer_contact, unit_price, quantity, total_amount, payable_amount, paid_at, delivered_at, remark, delivery_type, delivery_result, product_snapshot, created_at, query_token')
+    .select('order_no, shop_id, status, buyer_contact, unit_price, quantity, total_amount, payable_amount, paid_at, delivered_at, remark, delivery_type, delivery_result, product_snapshot, created_at, query_token')
     .eq('order_no', orderNo)
     .maybeSingle();
 
   if (error || !data) return { ok: false as const, message: '订单不存在。' };
-  return { ok: true as const, order: data };
+
+  let shopCode: string | null = null;
+  if (data.shop_id) {
+    const { data: shop } = await supabase.from('shops').select('shop_code').eq('id', data.shop_id).maybeSingle();
+    shopCode = shop?.shop_code || null;
+  }
+
+  return { ok: true as const, order: data, shopCode };
 }

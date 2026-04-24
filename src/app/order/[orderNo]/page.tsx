@@ -23,6 +23,7 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
   }
 
   const { order } = result;
+  const shopCode = result.shopCode;
   const productSnapshot = order.product_snapshot as { name?: string; subtitle?: string; delivery_type?: string } | null;
   const deliveryItems = Array.isArray(order.delivery_result) ? order.delivery_result as { preview?: string; content?: string; type?: string }[] : [];
   const canPay = order.status === 'pending_payment';
@@ -85,6 +86,12 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
             </form>
           </div>
         ) : null}
+
+        {shopCode && (
+          <div style={{ marginTop: 20 }}>
+            <a href={`/links/${shopCode}`} style={continueBuyBtnStyle}>继续购买</a>
+          </div>
+        )}
       </section>
     </main>
   );
@@ -149,3 +156,4 @@ const panelStyle: React.CSSProperties = { padding: 20, borderRadius: 20, border:
 const deliveryItemStyle: React.CSSProperties = { padding: 14, borderRadius: 16, background: 'var(--surface-soft)', border: '1px solid var(--border)' };
 const buttonStyle: React.CSSProperties = { padding: '14px 18px', borderRadius: 14, border: 'none', background: 'var(--primary)', color: '#fff', fontWeight: 700, cursor: 'pointer' };
 const secondaryButtonStyle: React.CSSProperties = { padding: '14px 18px', borderRadius: 14, border: '1px solid var(--border)', background: 'transparent', color: 'var(--foreground)', fontWeight: 700, cursor: 'pointer' };
+const continueBuyBtnStyle: React.CSSProperties = { display: 'inline-flex', padding: '14px 28px', borderRadius: 14, background: 'linear-gradient(135deg,#10b981,#059669)', color: '#fff', fontWeight: 700, textDecoration: 'none', fontSize: 15 };
