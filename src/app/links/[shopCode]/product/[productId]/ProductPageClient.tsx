@@ -53,6 +53,40 @@ export default function ProductPageClient({ shopCode, shopName, product }: Produ
   }, []);
 
   useEffect(() => {
+    if (!isMobile) return;
+
+    const syncBackToOrder = () => {
+      try {
+        const raw = window.sessionStorage.getItem('pending-mobile-order');
+        if (!raw) return;
+        const data = JSON.parse(raw) as { orderNo?: string; createdAt?: number };
+        if (!data.orderNo) return;
+        if (data.createdAt && Date.now() - data.createdAt > 15 * 60 * 1000) {
+          window.sessionStorage.removeItem('pending-mobile-order');
+          return;
+        }
+        window.location.href = `/order/${data.orderNo}`;
+      } catch {
+        window.sessionStorage.removeItem('pending-mobile-order');
+      }
+    };
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        syncBackToOrder();
+      }
+    };
+
+    window.addEventListener('focus', syncBackToOrder);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
+    return () => {
+      window.removeEventListener('focus', syncBackToOrder);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
+  }, [isMobile]);
+
+  useEffect(() => {
     if (!state.ok && state.message) {
       window.alert(state.message);
     }
@@ -65,6 +99,9 @@ export default function ProductPageClient({ shopCode, shopName, product }: Produ
     if (!state.orderNo || !state.amount || !state.productName) return;
     setPayLoading(true);
     if (isMobile) {
+      try {
+        window.sessionStorage.setItem('pending-mobile-order', JSON.stringify({ orderNo: state.orderNo, createdAt: Date.now() }));
+      } catch {}
       window.location.href = `/order/${state.orderNo}?pay=1`;
       return;
     }

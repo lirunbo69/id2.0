@@ -35,7 +35,21 @@ export function AutoSubmitForm({
   );
 }
 
-export function OrderAutoRefresh({ enabled }: { enabled: boolean }) {
+export function OrderAutoRefresh({ enabled, orderNo, status }: { enabled: boolean; orderNo: string; status: string }) {
+  useEffect(() => {
+    try {
+      const raw = window.sessionStorage.getItem('pending-mobile-order');
+      if (!raw) return;
+      const data = JSON.parse(raw) as { orderNo?: string };
+      if (data.orderNo !== orderNo) return;
+      if (status === 'delivered' || status === 'closed' || status === 'cancelled' || status === 'delivery_failed') {
+        window.sessionStorage.removeItem('pending-mobile-order');
+      }
+    } catch {
+      window.sessionStorage.removeItem('pending-mobile-order');
+    }
+  }, [orderNo, status]);
+
   useEffect(() => {
     if (!enabled) return;
 

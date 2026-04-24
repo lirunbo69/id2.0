@@ -57,7 +57,7 @@ export default async function OrderDetailPage({ params, searchParams }: OrderDet
         enabled={shouldAutoPay}
         fields={{ orderNo: order.order_no, channel: 'wap' }}
       />
-      <OrderAutoRefresh enabled={shouldAutoRefresh} />
+      <OrderAutoRefresh enabled={shouldAutoRefresh} orderNo={order.order_no} status={order.status} />
       <section style={cardStyle}>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
           <div>
