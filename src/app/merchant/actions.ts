@@ -1610,6 +1610,7 @@ export async function closeMerchantOrderAction(formData: FormData) {
 
   const orderId = String(formData.get('orderId') || '').trim();
   const reason = String(formData.get('reason') || '').trim() || '商家已手动关闭订单。';
+  const returnTo = String(formData.get('returnTo') || '/merchant/orders').trim() || '/merchant/orders';
 
   if (!orderId) {
     return { ok: false as const, message: '缺少订单 ID。' };
@@ -1626,7 +1627,7 @@ export async function closeMerchantOrderAction(formData: FormData) {
   revalidatePath(`/order/${detail.order.order_no}`);
   revalidatePath('/merchant/inventory');
   revalidatePath('/merchant/products');
-  return { ok: true as const, message: '订单已关闭。' };
+  redirect(withSuccessMessage(returnTo, '订单已关闭'));
 }
 
 export async function appendMerchantOrderRemarkAction(formData: FormData) {

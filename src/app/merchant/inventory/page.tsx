@@ -6,6 +6,17 @@ type MerchantInventoryPageProps = {
 
 export default async function MerchantInventoryPage({ searchParams }: MerchantInventoryPageProps) {
   const filters = await searchParams;
+  const buildInventoryPath = (overrides: Partial<typeof filters> = {}) => {
+    const params = new URLSearchParams();
+    const merged = { ...filters, ...overrides };
+    if (merged.productId) params.set('productId', merged.productId);
+    if (merged.status) params.set('status', merged.status);
+    if (merged.batchNo) params.set('batchNo', merged.batchNo);
+    if (merged.inventoryId) params.set('inventoryId', merged.inventoryId);
+    if (merged.success) params.set('success', merged.success);
+    const query = params.toString();
+    return query ? `/merchant/inventory?${query}` : '/merchant/inventory';
+  };
 
   async function submitInventory(formData: FormData) {
     'use server';
@@ -184,15 +195,15 @@ export default async function MerchantInventoryPage({ searchParams }: MerchantIn
                   <td style={tdStyle}>
                     {item.status === 'available' ? (
                       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                        <a href={`/merchant/inventory?inventoryId=${item.id}`} style={actionLinkStyle}>预览库存</a>
+                        <a href={buildInventoryPath({ inventoryId: item.id, success: undefined })} style={actionLinkStyle}>预览库存</a>
                         <form action={invalidateInventory}>
                           <input type="hidden" name="inventoryId" value={item.id} />
-                          <input type="hidden" name="returnTo" value="/merchant/inventory" />
+                          <input type="hidden" name="returnTo" value={buildInventoryPath({ inventoryId: undefined, success: undefined })} />
                           <button type="submit" style={actionButtonStyle}>作废</button>
                         </form>
                       </div>
                     ) : (
-                      <a href={`/merchant/inventory?inventoryId=${item.id}`} style={actionLinkStyle}>查看详情</a>
+                      <a href={buildInventoryPath({ inventoryId: item.id, success: undefined })} style={actionLinkStyle}>查看详情</a>
                     )}
                   </td>
                 </tr>
@@ -203,40 +214,50 @@ export default async function MerchantInventoryPage({ searchParams }: MerchantIn
       </section>
 
       {inventoryDetail?.ok ? (
-        <section style={cardStyle}>
-          <h2 style={{ marginTop: 0 }}>库存内容预览</h2>
-          <p style={{ color: 'var(--muted)', lineHeight: 1.8, marginTop: 8 }}>
-            当前商品：{inventoryDetail.product.name}，状态：{inventoryDetail.inventory.status}
-          </p>
-          <form action={updateInventory} style={{ display: 'grid', gap: 16, marginTop: 16 }}>
-            <input type="hidden" name="inventoryId" value={inventoryDetail.inventory.id} />
-            <input type="hidden" name="returnTo" value={`/merchant/inventory?inventoryId=${inventoryDetail.inventory.id}`} />
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-              <label style={{ display: 'grid', gap: 8 }}>
-                <span>库存类型</span>
-                <select name="contentType" defaultValue={inventoryDetail.inventory.content_type} style={inputStyle} disabled={inventoryDetail.inventory.status !== 'available'}>
-                  <option value="card_key">卡密</option>
-                  <option value="account_password">账号密码</option>
-                  <option value="link">链接</option>
-                  <option value="custom_text">文本</option>
-                </select>
-              </label>
-              <label style={{ display: 'grid', gap: 8 }}>
-                <span>批次号</span>
-                <input name="batchNo" defaultValue={inventoryDetail.inventory.batch_no || ''} style={inputStyle} disabled={inventoryDetail.inventory.status !== 'available'} />
-              </label>
+        <div style={modalOverlayStyle}>
+          <section style={modalCardStyle}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
+              <div>
+                <h2 style={{ margin: 0 }}>库存内容预览</h2>
+                <p style={{ color: 'var(--muted)', lineHeight: 1.8, margin: '8px 0 0' }}>
+                  当前商品：{inventoryDetail.product.name}，状态：{inventoryDetail.inventory.status}
+                </p>
+              </div>
+              <a href={buildInventoryPath({ inventoryId: undefined, success: undefined })} style={secondaryButtonStyle}>关闭</a>
             </div>
-            <label style={{ display: 'grid', gap: 8 }}>
-              <span>库存完整内容</span>
-              <textarea name="content" rows={8} defaultValue={inventoryDetail.inventory.content_encrypted} style={textareaStyle} disabled={inventoryDetail.inventory.status !== 'available'} />
-            </label>
-            {inventoryDetail.inventory.status === 'available' ? (
-              <button type="submit" style={primaryButtonStyle}>保存修改</button>
-            ) : (
-              <div style={{ color: 'var(--muted)' }}>当前库存不是可用状态，暂不支持编辑。</div>
-            )}
-          </form>
-        </section>
+            <form action={updateInventory} style={{ display: 'grid', gap: 16, marginTop: 20 }}>
+              <input type="hidden" name="inventoryId" value={inventoryDetail.inventory.id} />
+              <input type="hidden" name="returnTo" value={buildInventoryPath({ inventoryId: undefined, success: undefined })} />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <label style={{ display: 'grid', gap: 8 }}>
+                  <span>库存类型</span>
+                  <select name="contentType" defaultValue={inventoryDetail.inventory.content_type} style={inputStyle} disabled={inventoryDetail.inventory.status !== 'available'}>
+                    <option value="card_key">卡密</option>
+                    <option value="account_password">账号密码</option>
+                    <option value="link">链接</option>
+                    <option value="custom_text">文本</option>
+                  </select>
+                </label>
+                <label style={{ display: 'grid', gap: 8 }}>
+                  <span>批次号</span>
+                  <input name="batchNo" defaultValue={inventoryDetail.inventory.batch_no || ''} style={inputStyle} disabled={inventoryDetail.inventory.status !== 'available'} />
+                </label>
+              </div>
+              <label style={{ display: 'grid', gap: 8 }}>
+                <span>库存完整内容</span>
+                <textarea name="content" rows={8} defaultValue={inventoryDetail.inventory.content_encrypted} style={textareaStyle} disabled={inventoryDetail.inventory.status !== 'available'} />
+              </label>
+              {inventoryDetail.inventory.status === 'available' ? (
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+                  <a href={buildInventoryPath({ inventoryId: undefined, success: undefined })} style={secondaryButtonStyle}>取消</a>
+                  <button type="submit" style={primaryButtonStyle}>保存修改</button>
+                </div>
+              ) : (
+                <div style={{ color: 'var(--muted)' }}>当前库存不是可用状态，暂不支持编辑。</div>
+              )}
+            </form>
+          </section>
+        </div>
       ) : null}
     </main>
   );
@@ -254,6 +275,8 @@ function getStatusBadgeStyle(status: string): React.CSSProperties {
 }
 
 const cardStyle: React.CSSProperties = { padding: 20, borderRadius: 20, border: '1px solid rgba(148,163,184,.12)', background: 'var(--card)', boxShadow: '0 10px 30px rgba(2,6,23,.22)' };
+const modalOverlayStyle: React.CSSProperties = { position: 'fixed', inset: 0, background: 'rgba(15,23,42,.58)', display: 'grid', placeItems: 'center', padding: 24, zIndex: 1000 };
+const modalCardStyle: React.CSSProperties = { width: 'min(760px, 100%)', maxHeight: 'calc(100vh - 48px)', overflowY: 'auto', padding: 24, borderRadius: 24, border: '1px solid rgba(148,163,184,.16)', background: 'var(--card)', boxShadow: '0 24px 64px rgba(2,6,23,.4)' };
 const statStyle: React.CSSProperties = { padding: 18, borderRadius: 16, background: 'rgba(255,255,255,.03)', border: '1px solid rgba(148,163,184,.12)', display: 'grid', gap: 8 };
 const warnStyle: React.CSSProperties = { padding: 16, borderRadius: 14, background: 'rgba(251,191,36,.1)', color: '#fcd34d' };
 const successStyle: React.CSSProperties = { padding: 16, borderRadius: 14, background: 'rgba(16,185,129,.12)', color: '#86efac', border: '1px solid rgba(16,185,129,.22)' };

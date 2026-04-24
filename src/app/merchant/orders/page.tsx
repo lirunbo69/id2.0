@@ -1,12 +1,26 @@
 import { appendMerchantOrderRemarkAction, closeMerchantOrderAction, getMerchantOrders, redeliverMerchantOrderAction, triggerMerchantOrderPaymentAction } from '@/app/merchant/actions';
 
 type MerchantOrdersPageProps = {
-  searchParams: Promise<{ keyword?: string; status?: string; buyerContact?: string }>;
+  searchParams: Promise<{ keyword?: string; status?: string; buyerContact?: string; closeOrderId?: string; success?: string }>;
 };
 
 export default async function MerchantOrdersPage({ searchParams }: MerchantOrdersPageProps) {
   const filters = await searchParams;
+  const buildOrdersPath = (overrides: Partial<typeof filters> = {}) => {
+    const params = new URLSearchParams();
+    const merged = { ...filters, ...overrides };
+    if (merged.keyword) params.set('keyword', merged.keyword);
+    if (merged.status) params.set('status', merged.status);
+    if (merged.buyerContact) params.set('buyerContact', merged.buyerContact);
+    if (merged.closeOrderId) params.set('closeOrderId', merged.closeOrderId);
+    if (merged.success) params.set('success', merged.success);
+    const query = params.toString();
+    return query ? `/merchant/orders?${query}` : '/merchant/orders';
+  };
   const result = await getMerchantOrders(filters);
+  const closeOrderId = String(filters.closeOrderId || '').trim();
+  const closeTargetOrder = closeOrderId ? result.ok && result.orders.find((item) => item.id === closeOrderId) : null;
+  const successMessage = String(filters.success || '').trim();
 
   async function submitPayAction(formData: FormData) {
     'use server';
@@ -60,6 +74,8 @@ export default async function MerchantOrdersPage({ searchParams }: MerchantOrder
           <div style={emptyStateStyle}>你还没有店铺，请先完成店铺设置，再开始接单。</div>
         </section>
       ) : null}
+
+      {successMessage ? <section style={successStyle}>{successMessage}</section> : null}
 
       <section style={cardStyle}>
         <h2 style={{ marginTop: 0 }}>筛选条件</h2>
@@ -161,11 +177,7 @@ export default async function MerchantOrdersPage({ searchParams }: MerchantOrder
                           </form>
                         ) : null}
                         {order.status !== 'closed' && order.status !== 'cancelled' ? (
-                          <form action={submitCloseAction} style={{ display: 'grid', gap: 6 }}>
-                            <input type="hidden" name="orderId" value={order.id} />
-                            <input type="hidden" name="reason" value="商家在订单列表中手动关闭订单。" />
-                            <button type="submit" style={dangerButtonStyle}>关闭订单</button>
-                          </form>
+                          <a href={buildOrdersPath({ closeOrderId: order.id, success: undefined })} style={dangerButtonStyle}>关闭订单</a>
                         ) : null}
                         <form action={submitRemarkAction} style={{ display: 'grid', gap: 6 }}>
                           <input type="hidden" name="orderId" value={order.id} />
@@ -185,6 +197,26 @@ export default async function MerchantOrdersPage({ searchParams }: MerchantOrder
           </table>
         </div>
       </section>
+
+      {closeTargetOrder ? (
+        <div style={modalOverlayStyle}>
+          <section style={modalCardStyle}>
+            <h2 style={{ marginTop: 0, marginBottom: 10 }}>确认关闭订单</h2>
+            <p style={{ color: 'var(--muted)', lineHeight: 1.8, margin: 0 }}>
+              你确定要关闭订单 <strong style={{ color: 'var(--foreground)' }}>{closeTargetOrder.order_no}</strong> 吗？关闭后订单将不可继续支付。
+            </p>
+            <form action={submitCloseAction} style={{ display: 'grid', gap: 14, marginTop: 24 }}>
+              <input type="hidden" name="orderId" value={closeTargetOrder.id} />
+              <input type="hidden" name="reason" value="商家在订单列表中手动关闭订单。" />
+              <input type="hidden" name="returnTo" value={buildOrdersPath({ closeOrderId: undefined, success: undefined })} />
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+                <a href={buildOrdersPath({ closeOrderId: undefined, success: undefined })} style={secondaryButtonStyle}>取消</a>
+                <button type="submit" style={dangerButtonStyle}>确定关闭</button>
+              </div>
+            </form>
+          </section>
+        </div>
+      ) : null}
     </main>
   );
 }
@@ -225,6 +257,25 @@ const cardStyle: React.CSSProperties = {
   border: '1px solid rgba(148,163,184,.12)',
   background: 'var(--card)',
   boxShadow: '0 10px 30px rgba(2,6,23,.22)',
+};
+
+const modalOverlayStyle: React.CSSProperties = {
+  position: 'fixed',
+  inset: 0,
+  background: 'rgba(15,23,42,.58)',
+  display: 'grid',
+  placeItems: 'center',
+  padding: 24,
+  zIndex: 1000,
+};
+
+const modalCardStyle: React.CSSProperties = {
+  width: 'min(520px, 100%)',
+  padding: 24,
+  borderRadius: 24,
+  border: '1px solid rgba(148,163,184,.16)',
+  background: 'var(--card)',
+  boxShadow: '0 24px 64px rgba(2,6,23,.4)',
 };
 
 const inputStyle: React.CSSProperties = {
@@ -318,6 +369,14 @@ const emptyStateStyle: React.CSSProperties = {
   borderRadius: 14,
   color: 'var(--muted)',
   background: 'rgba(255,255,255,.03)',
+};
+
+const successStyle: React.CSSProperties = {
+  padding: 16,
+  borderRadius: 14,
+  background: 'rgba(16,185,129,.12)',
+  color: '#86efac',
+  border: '1px solid rgba(16,185,129,.22)',
 };
 
 const primaryButtonStyle: React.CSSProperties = {
