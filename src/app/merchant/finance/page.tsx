@@ -1,4 +1,5 @@
 import { getMerchantFinanceOverview } from '@/app/merchant/actions';
+import { formatBeijingDateTime } from '@/lib/utils';
 
 export default async function MerchantFinancePage() {
   const result = await getMerchantFinanceOverview();
@@ -53,7 +54,7 @@ export default async function MerchantFinancePage() {
                     <td style={tdStyle}>{order.order_no}</td>
                     <td style={tdStyle}><span style={statusTagStyle}>{order.status}</span></td>
                     <td style={tdStyle}>¥{Number(order.payable_amount || 0).toFixed(2)}</td>
-                    <td style={tdStyle}>{order.paid_at ? new Date(order.paid_at).toLocaleString('zh-CN') : new Date(order.created_at).toLocaleString('zh-CN')}</td>
+                    <td style={tdStyle}>{order.paid_at ? formatBeijingDateTime(order.paid_at) : formatBeijingDateTime(order.created_at)}</td>
                   </tr>
                 )) : <tr><td colSpan={4} style={emptyTableStyle}>暂无收款订单。</td></tr>}
               </tbody>
@@ -72,7 +73,7 @@ export default async function MerchantFinancePage() {
                 </div>
                 <div style={{ color: 'var(--muted)', marginTop: 8 }}>{record.channel} · {record.account_name}</div>
                 <div style={{ color: '#94a3b8', marginTop: 6 }}>{record.account_no}</div>
-                <div style={{ color: '#8b9bb6', marginTop: 6 }}>{new Date(record.created_at).toLocaleString('zh-CN')}</div>
+                <div style={{ color: '#8b9bb6', marginTop: 6 }}>{formatBeijingDateTime(record.created_at)}</div>
               </div>
             )) : <div style={emptyStateStyle}>暂无提现记录。提交提现申请后会显示在这里。</div>}
           </div>

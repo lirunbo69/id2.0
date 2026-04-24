@@ -1,12 +1,12 @@
 'use server';
 
 import { headers } from 'next/headers';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, unstable_cache } from 'next/cache';
 import { redirect } from 'next/navigation';
 
 import { buildAlipayPagePayUrl, buildAlipayWapPayUrl } from '@/lib/alipay';
 import { createServerSupabaseClient, createServiceRoleSupabaseClient } from '@/lib/supabase';
-import { isAutoDeliveryType, processOrderPayment, releaseExpiredPendingOrders, reserveInventoryForOrder } from '@/lib/order-flow';
+import { isAutoDeliveryType, processOrderPayment, releaseExpiredPendingOrders } from '@/lib/order-flow';
 import { resolveSiteUrl } from '@/lib/utils';
 
 function makeOrderNo() {
@@ -132,48 +132,64 @@ export async function queryOrderAction(formData: FormData) {
 }
 
 export async function getPublicShopData(shopCode: string) {
-  const supabase = await createServerSupabaseClient();
-  const { data: shop, error: shopError } = await supabase
-    .from('shops')
-    .select('id, shop_code, name, intro, announcement, contact_qq, contact_wechat, contact_telegram, customer_service_url, is_open, status, rating, order_count, logo_url, banner_url')
-    .eq('shop_code', shopCode)
-    .maybeSingle();
+  const loadShopData = unstable_cache(
+    async (code: string) => {
+      const supabase = createServiceRoleSupabaseClient();
+      const { data: shop, error: shopError } = await supabase
+        .from('shops')
+        .select('id, shop_code, name, intro, announcement, contact_qq, contact_wechat, contact_telegram, customer_service_url, is_open, status, rating, order_count, logo_url, banner_url')
+        .eq('shop_code', code)
+        .maybeSingle();
 
-  if (shopError || !shop) {
-    return { ok: false as const, message: '店铺不存在。' };
-  }
+      if (shopError || !shop) {
+        return { ok: false as const, message: '店铺不存在。' };
+      }
 
-  const [{ data: categories, error: categoryError }, { data: products, error: productError }] = await Promise.all([
-    supabase.from('shop_categories').select('id, name, sort_order').eq('shop_id', shop.id).eq('is_active', true).order('sort_order', { ascending: true }),
-    supabase
-      .from('products')
-      .select('id, name, subtitle, price, stock_count, sold_count, summary, cover_url, category_id, delivery_type, need_contact, need_remark')
-      .eq('shop_id', shop.id)
-      .eq('status', 'active')
-      .eq('is_visible', true)
-      .order('created_at', { ascending: false }),
-  ]);
+      const [{ data: categories, error: categoryError }, { data: products, error: productError }] = await Promise.all([
+        supabase.from('shop_categories').select('id, name, sort_order').eq('shop_id', shop.id).eq('is_active', true).order('sort_order', { ascending: true }),
+        supabase
+          .from('products')
+          .select('id, name, subtitle, price, stock_count, sold_count, summary, cover_url, category_id, delivery_type, need_contact, need_remark')
+          .eq('shop_id', shop.id)
+          .eq('status', 'active')
+          .eq('is_visible', true)
+          .order('created_at', { ascending: false }),
+      ]);
 
-  if (categoryError) return { ok: false as const, message: categoryError.message };
-  if (productError) return { ok: false as const, message: productError.message };
+      if (categoryError) return { ok: false as const, message: categoryError.message };
+      if (productError) return { ok: false as const, message: productError.message };
 
-  return { ok: true as const, shop, categories: categories || [], products: products || [] };
+      return { ok: true as const, shop, categories: categories || [], products: products || [] };
+    },
+    ['public-shop-data', shopCode],
+    { revalidate: 15 },
+  );
+
+  return await loadShopData(shopCode);
 }
 
 export async function getPublicProductDetail(shopCode: string, productId: string) {
-  const supabase = await createServerSupabaseClient();
-  const { data: shop, error: shopError } = await supabase.from('shops').select('id, shop_code, name, is_open, announcement').eq('shop_code', shopCode).maybeSingle();
-  if (shopError || !shop) return { ok: false as const, message: '店铺不存在。' };
+  const loadProductDetail = unstable_cache(
+    async (code: string, pid: string) => {
+      const supabase = createServiceRoleSupabaseClient();
+      const { data: shop, error: shopError } = await supabase.from('shops').select('id, shop_code, name, is_open, announcement').eq('shop_code', code).maybeSingle();
+      if (shopError || !shop) return { ok: false as const, message: '店铺不存在。' };
 
-  const { data: product, error } = await supabase
-    .from('products')
-    .select('id, name, subtitle, price, stock_count, sold_count, summary, detail_html, usage_guide, refund_policy, notice_text, delivery_type, min_purchase_qty, max_purchase_qty, cover_url, category_id, need_contact, need_remark')
-    .eq('id', productId)
-    .eq('shop_id', shop.id)
-    .maybeSingle();
+      const { data: product, error } = await supabase
+        .from('products')
+        .select('id, name, subtitle, price, stock_count, sold_count, summary, detail_html, usage_guide, refund_policy, notice_text, delivery_type, min_purchase_qty, max_purchase_qty, cover_url, category_id, need_contact, need_remark')
+        .eq('id', pid)
+        .eq('shop_id', shop.id)
+        .maybeSingle();
 
-  if (error || !product) return { ok: false as const, message: '商品不存在。' };
-  return { ok: true as const, shop, product };
+      if (error || !product) return { ok: false as const, message: '商品不存在。' };
+      return { ok: true as const, shop, product };
+    },
+    ['public-product-detail', shopCode, productId],
+    { revalidate: 15 },
+  );
+
+  return await loadProductDetail(shopCode, productId);
 }
 
 export async function createOrderAction(formData: FormData) {
@@ -321,20 +337,6 @@ export async function createOrderAndReturnAction(
       .maybeSingle();
 
     if (error || !insertedOrder) return { ok: false, message: error?.message || '创建订单失败。' };
-
-    if (isAutoDeliveryType(product.delivery_type)) {
-      const reserved = await reserveInventoryForOrder(insertedOrder.id, product.id, quantity);
-      if (!reserved) {
-        await supabase
-          .from('orders')
-          .update({
-            status: 'closed',
-            delivery_result: [{ type: 'reserve_failed', preview: '库存已被抢光，订单未能锁定库存。', content: '库存已被抢光，订单未能锁定库存。' }],
-          })
-          .eq('id', insertedOrder.id);
-        return { ok: false, message: '库存已被抢光，请刷新后重试。' };
-      }
-    }
 
     revalidatePath(`/order/${orderNo}`);
     revalidatePath('/merchant/inventory');

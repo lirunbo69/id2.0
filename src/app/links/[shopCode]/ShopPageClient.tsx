@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import Link from 'next/link';
+import { useMemo, useState, useRef, useEffect } from 'react';
 
 type Shop = {
   id: string;
@@ -47,7 +48,7 @@ type Props = {
 export default function ShopPageClient({ shop, categories, products, shopCode, activeCategory }: Props) {
   const [search, setSearch] = useState('');
   const [showContact, setShowContact] = useState(false);
-  const productRefs = useRef<Record<string, HTMLElement | null>>({});
+  const productRefs = useRef<Record<string, HTMLAnchorElement | null>>({});
 
   useEffect(() => {
     const prev = document.documentElement.getAttribute('data-theme');
@@ -57,17 +58,21 @@ export default function ShopPageClient({ shop, categories, products, shopCode, a
     };
   }, []);
 
-  const filteredProducts = activeCategory
-    ? products.filter((p) => p.category_id === activeCategory)
-    : products;
+  const filteredProducts = useMemo(() => (
+    activeCategory
+      ? products.filter((p) => p.category_id === activeCategory)
+      : products
+  ), [activeCategory, products]);
 
-  const displayProducts = search.trim()
-    ? filteredProducts.filter((p) =>
-        p.name.toLowerCase().includes(search.trim().toLowerCase()) ||
-        (p.subtitle || '').toLowerCase().includes(search.trim().toLowerCase()) ||
-        (p.summary || '').toLowerCase().includes(search.trim().toLowerCase()),
-      )
-    : filteredProducts;
+  const displayProducts = useMemo(() => (
+    search.trim()
+      ? filteredProducts.filter((p) =>
+          p.name.toLowerCase().includes(search.trim().toLowerCase()) ||
+          (p.subtitle || '').toLowerCase().includes(search.trim().toLowerCase()) ||
+          (p.summary || '').toLowerCase().includes(search.trim().toLowerCase())
+        )
+      : filteredProducts
+  ), [filteredProducts, search]);
 
   function handleSearch(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -90,7 +95,7 @@ export default function ShopPageClient({ shop, categories, products, shopCode, a
   return (
     <main style={{ maxWidth: 960, margin: '0 auto', padding: '16px 12px 80px' }}>
       <header style={headerStyle}>
-        <a href="/" style={brandStyle}>
+        <Link href="/" style={brandStyle}>
           <span style={brandMarkStyle}>
             <span style={brandMStyle}>M</span>
             <span style={brandTStyle}>T</span>
@@ -99,7 +104,7 @@ export default function ShopPageClient({ shop, categories, products, shopCode, a
             <span style={{ fontSize: 17, fontWeight: 800, color: '#0f172a' }}>MT虚拟商品自动发货系统</span>
             <span style={{ fontSize: 11, color: '#64748b' }}>Mtgo旗下产品</span>
           </span>
-        </a>
+        </Link>
       </header>
 
       <section style={shopInfoCardStyle}>
@@ -114,7 +119,7 @@ export default function ShopPageClient({ shop, categories, products, shopCode, a
           </div>
         </div>
         <div style={{ display: 'flex', gap: 10, marginTop: 14, flexWrap: 'wrap' }}>
-          <a href={`/order/query`} style={actionBtnOutlineStyle}>查询订单</a>
+          <Link href="/order/query" style={actionBtnOutlineStyle}>查询订单</Link>
           <button type="button" onClick={() => setShowContact(!showContact)} style={actionBtnSolidStyle}>
             {showContact ? '收起客服信息' : '联系商家客服'}
           </button>
@@ -150,9 +155,9 @@ export default function ShopPageClient({ shop, categories, products, shopCode, a
       <section style={sectionStyle}>
         <h2 style={sectionTitleStyle}>商品分类</h2>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          <a href={`/links/${shopCode}`} style={catPill(!activeCategory)}>全部 ({products.length})</a>
+          <Link href={`/links/${shopCode}`} style={catPill(!activeCategory)}>全部 ({products.length})</Link>
           {categories.map((c) => (
-            <a key={c.id} href={`/links/${shopCode}?category=${c.id}`} style={catPill(activeCategory === c.id)}>{c.name}</a>
+            <Link key={c.id} href={`/links/${shopCode}?category=${c.id}`} style={catPill(activeCategory === c.id)}>{c.name}</Link>
           ))}
         </div>
       </section>
@@ -161,10 +166,10 @@ export default function ShopPageClient({ shop, categories, products, shopCode, a
         <h2 style={sectionTitleStyle}>选择商品</h2>
         <div style={{ display: 'grid', gap: 14 }}>
           {displayProducts.length ? displayProducts.map((p) => (
-            <a
+            <Link
               key={p.id}
-              ref={(el) => { productRefs.current[p.id] = el; }}
               href={`/links/${shopCode}/product/${p.id}`}
+              ref={(el) => { productRefs.current[p.id] = el; }}
               style={productRowStyle}
             >
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -178,7 +183,7 @@ export default function ShopPageClient({ shop, categories, products, shopCode, a
               <div style={productThumbStyle}>
                 <span style={thumbLetterStyle}>{p.name.slice(0, 2)}</span>
               </div>
-            </a>
+            </Link>
           )) : (
             <div style={{ padding: 20, color: '#64748b', textAlign: 'center' }}>
               {search.trim() ? `没有找到包含"${search.trim()}"的商品` : '当前分类下暂无商品。'}

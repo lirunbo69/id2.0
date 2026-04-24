@@ -1,4 +1,5 @@
 import { getMerchantDashboardGuide } from '@/app/merchant/actions';
+import { formatBeijingDateTime } from '@/lib/utils';
 
 export default async function MerchantDashboardPage() {
   const result = await getMerchantDashboardGuide();
@@ -125,7 +126,7 @@ export default async function MerchantDashboardPage() {
                     <td style={tdStyle}>{order.productName}</td>
                     <td style={tdStyle}><span style={getStatusBadgeStyle(order.status)}>{order.status}</span></td>
                     <td style={tdStyle}>¥{order.amount.toFixed(2)}</td>
-                    <td style={tdStyle}>{new Date(order.createdAt).toLocaleString('zh-CN')}</td>
+                    <td style={tdStyle}>{formatBeijingDateTime(order.createdAt)}</td>
                   </tr>
                 )) : <tr><td colSpan={5} style={emptyTableStyle}>暂无订单数据。</td></tr>}
               </tbody>

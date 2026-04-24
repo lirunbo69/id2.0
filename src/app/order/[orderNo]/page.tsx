@@ -1,6 +1,7 @@
 import { getOrderDetail, initiateAlipayPaymentAction } from '@/app/shop-actions';
 import { isAlipayTradeSuccess, verifyAlipayNotify } from '@/lib/alipay';
 import { processOrderPayment } from '@/lib/order-flow';
+import { formatBeijingDateTime } from '@/lib/utils';
 
 import { AutoSubmitForm, OrderAutoRefresh } from './OrderAutoClient';
 import { OrderPayForm } from './OrderPayForm';
@@ -72,9 +73,9 @@ export default async function OrderDetailPage({ params, searchParams }: OrderDet
             <InfoRow label="购买数量" value={String(order.quantity)} />
             <InfoRow label="订单金额" value={`¥${Number(order.payable_amount).toFixed(2)}`} />
             <InfoRow label="联系方式" value={order.buyer_contact || '-'} />
-            <InfoRow label="创建时间" value={new Date(order.created_at).toLocaleString('zh-CN')} />
-            <InfoRow label="支付时间" value={order.paid_at ? new Date(order.paid_at).toLocaleString('zh-CN') : '未支付'} />
-            <InfoRow label="发货时间" value={order.delivered_at ? new Date(order.delivered_at).toLocaleString('zh-CN') : '未发货'} />
+            <InfoRow label="创建时间" value={formatBeijingDateTime(order.created_at)} />
+            <InfoRow label="支付时间" value={order.paid_at ? formatBeijingDateTime(order.paid_at) : '未支付'} />
+            <InfoRow label="发货时间" value={order.delivered_at ? formatBeijingDateTime(order.delivered_at) : '未发货'} />
             <InfoRow label="查询密钥" value={order.query_token} mono />
             <InfoRow label="备注" value={order.remark || '-'} />
           </div>

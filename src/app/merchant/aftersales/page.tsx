@@ -1,4 +1,5 @@
 import { getMerchantAftersales } from '@/app/merchant/actions';
+import { formatBeijingDateTime } from '@/lib/utils';
 
 type MerchantAftersalesPageProps = {
   searchParams: Promise<{ keyword?: string; status?: string }>;
@@ -93,9 +94,9 @@ export default async function MerchantAftersalesPage({ searchParams }: MerchantA
                     <td style={tdStyle}>¥{Number(record.payable_amount || 0).toFixed(2)}</td>
                     <td style={tdStyle}>{record.remark || '暂无备注'}</td>
                     <td style={tdStyle}>
-                      <div>下单：{new Date(record.created_at).toLocaleString('zh-CN')}</div>
-                      <div style={{ color: 'var(--muted)', marginTop: 6 }}>支付：{record.paid_at ? new Date(record.paid_at).toLocaleString('zh-CN') : '未支付'}</div>
-                      <div style={{ color: 'var(--muted)', marginTop: 6 }}>发货：{record.delivered_at ? new Date(record.delivered_at).toLocaleString('zh-CN') : '未发货'}</div>
+                      <div>下单：{formatBeijingDateTime(record.created_at)}</div>
+                      <div style={{ color: 'var(--muted)', marginTop: 6 }}>支付：{record.paid_at ? formatBeijingDateTime(record.paid_at) : '未支付'}</div>
+                      <div style={{ color: 'var(--muted)', marginTop: 6 }}>发货：{record.delivered_at ? formatBeijingDateTime(record.delivered_at) : '未发货'}</div>
                     </td>
                   </tr>
                 );

@@ -1,4 +1,5 @@
 import { createMerchantCategoryAction, deleteMerchantCategoryAction, getMerchantCategories, toggleMerchantCategoryAction, updateMerchantCategoryAction } from '@/app/merchant/actions';
+import { formatBeijingDateTime } from '@/lib/utils';
 
 export default async function MerchantCategoriesPage({ searchParams }: { searchParams: Promise<{ success?: string }> }) {
   async function submitCategory(formData: FormData) {
@@ -88,7 +89,7 @@ export default async function MerchantCategoriesPage({ searchParams }: { searchP
                   <td style={tdStyle}>{item.description || '-'}</td>
                   <td style={tdStyle}>{item.sort_order}</td>
                   <td style={tdStyle}><span style={item.is_active ? activeTagStyle : inactiveTagStyle}>{item.is_active ? '启用' : '禁用'}</span></td>
-                  <td style={tdStyle}>{new Date(item.created_at).toLocaleString('zh-CN')}</td>
+                  <td style={tdStyle}>{formatBeijingDateTime(item.created_at)}</td>
                   <td style={tdStyle}>
                     <div style={{ display: 'grid', gap: 8 }}>
                       <form action={submitToggleCategory}>

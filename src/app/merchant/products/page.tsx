@@ -1,12 +1,24 @@
 import { duplicateMerchantProductAction, getMerchantProducts, updateMerchantProductStatusAction } from '@/app/merchant/actions';
+import { formatBeijingDateTime } from '@/lib/utils';
 
 type MerchantProductsPageProps = {
-  searchParams: Promise<{ keyword?: string; status?: string; categoryId?: string }>;
+  searchParams: Promise<{ keyword?: string; status?: string; categoryId?: string; success?: string }>;
 };
 
 export default async function MerchantProductsPage({ searchParams }: MerchantProductsPageProps) {
   const filters = await searchParams;
+  const buildProductsPath = (overrides: Partial<typeof filters> = {}) => {
+    const params = new URLSearchParams();
+    const merged = { ...filters, ...overrides };
+    if (merged.keyword) params.set('keyword', merged.keyword);
+    if (merged.status) params.set('status', merged.status);
+    if (merged.categoryId) params.set('categoryId', merged.categoryId);
+    if (merged.success) params.set('success', merged.success);
+    const query = params.toString();
+    return query ? `/merchant/products?${query}` : '/merchant/products';
+  };
   const result = await getMerchantProducts(filters);
+  const successMessage = String(filters.success || '').trim();
 
   async function submitStatusAction(formData: FormData) {
     'use server';
@@ -48,6 +60,8 @@ export default async function MerchantProductsPage({ searchParams }: MerchantPro
         </section>
       ) : null}
 
+      {successMessage ? <section style={successStyle}>{successMessage}</section> : null}
+
       <section style={cardStyle}>
         <h2 style={{ marginTop: 0 }}>筛选条件</h2>
         <form method="get" style={{ display: 'grid', gap: 16, marginTop: 16 }}>
@@ -76,7 +90,7 @@ export default async function MerchantProductsPage({ searchParams }: MerchantPro
             </label>
             <div style={{ display: 'flex', alignItems: 'end', gap: 10 }}>
               <button type="submit" style={primaryButtonStyle}>筛选</button>
-              <a href="/merchant/products" style={secondaryButtonStyle}>重置</a>
+              <a href={buildProductsPath({ success: undefined })} style={secondaryButtonStyle}>重置</a>
             </div>
           </div>
         </form>
@@ -103,7 +117,7 @@ export default async function MerchantProductsPage({ searchParams }: MerchantPro
                     <td style={tdStyle}>
                       <div style={{ fontWeight: 700 }}>{product.name}</div>
                       <div style={{ color: 'var(--muted)', marginTop: 6 }}>{product.subtitle || '暂无副标题'}</div>
-                      <div style={{ color: '#8b9bb6', marginTop: 6 }}>{new Date(product.created_at).toLocaleString('zh-CN')}</div>
+                      <div style={{ color: '#8b9bb6', marginTop: 6 }}>{formatBeijingDateTime(product.created_at)}</div>
                     </td>
                     <td style={tdStyle}>¥{Number(product.price).toFixed(2)}</td>
                     <td style={tdStyle}><span style={getStatusBadgeStyle(product.status, product.is_visible)}>{product.is_visible ? product.status : 'hidden'}</span></td>
@@ -120,27 +134,32 @@ export default async function MerchantProductsPage({ searchParams }: MerchantPro
                       <div style={{ display: 'grid', gap: 8 }}>
                         <form action={submitStatusAction} style={actionRowStyle}>
                           <input type="hidden" name="productId" value={product.id} />
+                          <input type="hidden" name="returnTo" value={buildProductsPath({ success: undefined })} />
                           <input type="hidden" name="action" value={product.status === 'active' ? 'deactivate' : 'activate'} />
                           <button type="submit" style={actionButtonStyle}>{product.status === 'active' ? '下架' : '上架'}</button>
                         </form>
                         <form action={submitStatusAction} style={actionRowStyle}>
                           <input type="hidden" name="productId" value={product.id} />
+                          <input type="hidden" name="returnTo" value={buildProductsPath({ success: undefined })} />
                           <input type="hidden" name="action" value="toggle_visible" />
                           <button type="submit" style={actionButtonStyle}>{product.is_visible ? '隐藏' : '显示'}</button>
                         </form>
                         <form action={submitStatusAction} style={actionRowStyle}>
                           <input type="hidden" name="productId" value={product.id} />
+                          <input type="hidden" name="returnTo" value={buildProductsPath({ success: undefined })} />
                           <input type="hidden" name="action" value="toggle_recommended" />
                           <button type="submit" style={actionButtonStyle}>{product.is_recommended ? '取消推荐' : '设为推荐'}</button>
                         </form>
                         <form action={submitStatusAction} style={actionRowStyle}>
                           <input type="hidden" name="productId" value={product.id} />
+                          <input type="hidden" name="returnTo" value={buildProductsPath({ success: undefined })} />
                           <input type="hidden" name="action" value="toggle_hot" />
                           <button type="submit" style={actionButtonStyle}>{product.is_hot ? '取消热卖' : '设为热卖'}</button>
                         </form>
                         <a href={`/merchant/products/${product.id}/edit`} style={actionButtonStyle}>编辑商品</a>
                         <form action={submitDuplicateAction} style={actionRowStyle}>
                           <input type="hidden" name="productId" value={product.id} />
+                          <input type="hidden" name="returnTo" value={buildProductsPath({ success: undefined })} />
                           <button type="submit" style={actionButtonStyle}>复制商品</button>
                         </form>
                       </div>
@@ -192,6 +211,7 @@ const thStyle: React.CSSProperties = { padding: '14px 12px', color: 'var(--muted
 const tdStyle: React.CSSProperties = { padding: '14px 12px', verticalAlign: 'top' };
 const emptyStyle: React.CSSProperties = { padding: '28px 12px', textAlign: 'center', color: 'var(--muted)' };
 const warnStyle: React.CSSProperties = { padding: 18, borderRadius: 16, background: 'rgba(251,191,36,.1)', color: '#fcd34d' };
+const successStyle: React.CSSProperties = { padding: 16, borderRadius: 14, background: 'rgba(16,185,129,.12)', color: '#86efac', border: '1px solid rgba(16,185,129,.22)' };
 const actionRowStyle: React.CSSProperties = { margin: 0 };
 const actionButtonStyle: React.CSSProperties = { width: '100%', padding: '8px 10px', borderRadius: 10, border: '1px solid rgba(148,163,184,.16)', background: 'rgba(255,255,255,.03)', color: '#0f172a', cursor: 'pointer' };
 const tagStyle: React.CSSProperties = { display: 'inline-flex', padding: '4px 8px', borderRadius: 999, background: 'rgba(79,70,229,.18)', color: '#c7d2fe', fontSize: 12, fontWeight: 700 };

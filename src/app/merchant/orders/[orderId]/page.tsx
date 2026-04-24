@@ -1,4 +1,5 @@
 import { getMerchantOrderDetail, manualDeliverMerchantOrderAction, redeliverMerchantOrderAction } from '@/app/merchant/actions';
+import { formatBeijingDateTime } from '@/lib/utils';
 
 type MerchantOrderDetailPageProps = {
   params: Promise<{ orderId: string }>;
@@ -59,9 +60,9 @@ export default async function MerchantOrderDetailPage({ params }: MerchantOrderD
         <section style={cardStyle}>
           <h2 style={{ marginTop: 0 }}>时间节点</h2>
           <div style={{ display: 'grid', gap: 14, marginTop: 16 }}>
-            <InfoRow label="下单时间" value={new Date(order.created_at).toLocaleString('zh-CN')} />
-            <InfoRow label="支付时间" value={order.paid_at ? new Date(order.paid_at).toLocaleString('zh-CN') : '未支付'} />
-            <InfoRow label="发货时间" value={order.delivered_at ? new Date(order.delivered_at).toLocaleString('zh-CN') : '未发货'} />
+            <InfoRow label="下单时间" value={formatBeijingDateTime(order.created_at)} />
+            <InfoRow label="支付时间" value={order.paid_at ? formatBeijingDateTime(order.paid_at) : '未支付'} />
+            <InfoRow label="发货时间" value={order.delivered_at ? formatBeijingDateTime(order.delivered_at) : '未发货'} />
             <InfoRow label="买家备注" value={order.remark || '暂无备注'} />
           </div>
         </section>

@@ -1,4 +1,5 @@
 import { getMerchantSystemOverview } from '@/app/merchant/actions';
+import { formatBeijingDateTime } from '@/lib/utils';
 
 export default async function MerchantOnboardingPage() {
   const result = await getMerchantSystemOverview();
@@ -25,7 +26,7 @@ export default async function MerchantOnboardingPage() {
             <InfoRow label="联系邮箱" value={result.onboardingInfo.contactEmail} />
             <InfoRow label="审核状态" value={result.onboardingInfo.reviewStatus} />
             <InfoRow label="店铺名称" value={result.onboardingInfo.shopName} />
-            <InfoRow label="店铺创建时间" value={result.onboardingInfo.shopCreatedAt ? new Date(result.onboardingInfo.shopCreatedAt).toLocaleString('zh-CN') : '-'} />
+            <InfoRow label="店铺创建时间" value={result.onboardingInfo.shopCreatedAt ? formatBeijingDateTime(result.onboardingInfo.shopCreatedAt) : '-'} />
           </div>
         </section>
 

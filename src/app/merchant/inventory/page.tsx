@@ -1,4 +1,5 @@
 import { createMerchantInventoryAction, createSingleMerchantInventoryAction, getMerchantInventoryData, getMerchantInventoryDetail, invalidateMerchantInventoryAction, updateMerchantInventoryAction } from '@/app/merchant/actions';
+import { formatBeijingDateTime } from '@/lib/utils';
 
 type MerchantInventoryPageProps = {
   searchParams: Promise<{ productId?: string; status?: string; batchNo?: string; inventoryId?: string; success?: string }>;
@@ -52,7 +53,7 @@ export default async function MerchantInventoryPage({ searchParams }: MerchantIn
       <section style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 20, flexWrap: 'wrap' }}>
         <div>
           <h1 style={{ marginTop: 0, marginBottom: 8, fontSize: 32 }}>库存管理</h1>
-          <p style={{ color: 'var(--muted)', margin: 0, lineHeight: 1.8 }}>支持库存筛选、批量导入、单条新增和作废可用库存。</p>
+          <p style={{ color: 'var(--muted)', margin: 0, lineHeight: 1.8 }}>支持库存筛选、批量导入、单条新增和作废可用库存，列表已优先展示商品标题。</p>
         </div>
       </section>
 
@@ -174,7 +175,7 @@ export default async function MerchantInventoryPage({ searchParams }: MerchantIn
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid rgba(148,163,184,.12)', textAlign: 'left' }}>
-                <th style={thStyle}>商品ID</th>
+                <th style={thStyle}>商品标题</th>
                 <th style={thStyle}>预览</th>
                 <th style={thStyle}>类型</th>
                 <th style={thStyle}>状态</th>
@@ -184,14 +185,17 @@ export default async function MerchantInventoryPage({ searchParams }: MerchantIn
               </tr>
             </thead>
             <tbody>
-              {result.inventoryItems.length ? result.inventoryItems.map((item) => (
+              {result.inventoryItems.length ? result.inventoryItems.map((item) => {
+                const productRelation = Array.isArray(item.products) ? item.products[0] : item.products;
+
+                return (
                 <tr key={item.id} style={{ borderBottom: '1px solid rgba(148,163,184,.08)' }}>
-                  <td style={tdStyle}>{item.product_id}</td>
+                  <td style={tdStyle}>{productRelation?.name || item.product_id}</td>
                   <td style={tdStyle}>{item.content_preview}</td>
                   <td style={tdStyle}>{item.content_type}</td>
                   <td style={tdStyle}><span style={getStatusBadgeStyle(item.status)}>{item.status}</span></td>
                   <td style={tdStyle}>{item.batch_no || '-'}</td>
-                  <td style={tdStyle}>{new Date(item.created_at).toLocaleString('zh-CN')}</td>
+                  <td style={tdStyle}>{formatBeijingDateTime(item.created_at)}</td>
                   <td style={tdStyle}>
                     {item.status === 'available' ? (
                       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -207,7 +211,8 @@ export default async function MerchantInventoryPage({ searchParams }: MerchantIn
                     )}
                   </td>
                 </tr>
-              )) : <tr><td colSpan={7} style={emptyStyle}>暂无符合条件的库存数据。</td></tr>}
+              );
+              }) : <tr><td colSpan={7} style={emptyStyle}>暂无符合条件的库存数据。</td></tr>}
             </tbody>
           </table>
         </div>
@@ -283,9 +288,9 @@ const successStyle: React.CSSProperties = { padding: 16, borderRadius: 14, backg
 const inputStyle: React.CSSProperties = { padding: '12px 14px', borderRadius: 12, border: '1px solid rgba(148,163,184,.16)', background: 'rgba(255,255,255,.03)', color: 'var(--foreground)' };
 const textareaStyle: React.CSSProperties = { ...inputStyle, resize: 'vertical' };
 const primaryButtonStyle: React.CSSProperties = { width: 'fit-content', padding: '12px 16px', borderRadius: 12, border: 'none', background: 'var(--primary)', color: '#fff', fontWeight: 700, cursor: 'pointer' };
-const secondaryButtonStyle: React.CSSProperties = { width: 'fit-content', padding: '12px 16px', borderRadius: 12, border: '1px solid rgba(148,163,184,.16)', background: 'rgba(255,255,255,.03)', color: '#e2e8f0' };
-const actionLinkStyle: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '8px 10px', borderRadius: 10, border: '1px solid rgba(96,165,250,.24)', background: 'rgba(59,130,246,.12)', color: '#93c5fd', textDecoration: 'none' };
-const actionButtonStyle: React.CSSProperties = { padding: '8px 10px', borderRadius: 10, border: '1px solid rgba(148,163,184,.16)', background: 'rgba(255,255,255,.03)', color: '#e2e8f0', cursor: 'pointer' };
+const secondaryButtonStyle: React.CSSProperties = { width: 'fit-content', padding: '12px 16px', borderRadius: 12, border: '1px solid rgba(148,163,184,.16)', background: 'rgba(255,255,255,.03)', color: '#0f172a' };
+const actionLinkStyle: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '8px 10px', borderRadius: 10, border: '1px solid rgba(96,165,250,.24)', background: 'rgba(59,130,246,.12)', color: '#0f172a', textDecoration: 'none' };
+const actionButtonStyle: React.CSSProperties = { padding: '8px 10px', borderRadius: 10, border: '1px solid rgba(148,163,184,.16)', background: 'rgba(255,255,255,.03)', color: '#0f172a', cursor: 'pointer' };
 const thStyle: React.CSSProperties = { padding: '14px 12px', color: 'var(--muted)' };
 const tdStyle: React.CSSProperties = { padding: '14px 12px' };
 const emptyStyle: React.CSSProperties = { padding: '26px 12px', textAlign: 'center', color: 'var(--muted)' };

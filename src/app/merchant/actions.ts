@@ -748,6 +748,7 @@ export async function updateMerchantProductStatusAction(formData: FormData) {
 
   const productId = String(formData.get('productId') || '').trim();
   const action = String(formData.get('action') || '').trim();
+  const returnTo = String(formData.get('returnTo') || '/merchant/products').trim() || '/merchant/products';
 
   if (!productId || !action) {
     return { ok: false as const, message: '缺少商品操作参数。' };
@@ -774,12 +775,28 @@ export async function updateMerchantProductStatusAction(formData: FormData) {
   }
 
   const payload: Record<string, unknown> = {};
+  let successMessage = '商品状态已更新';
 
-  if (action === 'activate') payload.status = 'active';
-  if (action === 'deactivate') payload.status = 'inactive';
-  if (action === 'toggle_visible') payload.is_visible = !product.is_visible;
-  if (action === 'toggle_recommended') payload.is_recommended = !product.is_recommended;
-  if (action === 'toggle_hot') payload.is_hot = !product.is_hot;
+  if (action === 'activate') {
+    payload.status = 'active';
+    successMessage = '商品已上架';
+  }
+  if (action === 'deactivate') {
+    payload.status = 'inactive';
+    successMessage = '商品已下架';
+  }
+  if (action === 'toggle_visible') {
+    payload.is_visible = !product.is_visible;
+    successMessage = product.is_visible ? '商品已隐藏' : '商品已显示';
+  }
+  if (action === 'toggle_recommended') {
+    payload.is_recommended = !product.is_recommended;
+    successMessage = product.is_recommended ? '已取消推荐' : '已设为推荐';
+  }
+  if (action === 'toggle_hot') {
+    payload.is_hot = !product.is_hot;
+    successMessage = product.is_hot ? '已取消热卖' : '已设为热卖';
+  }
 
   const { error } = await context.supabase.from('products').update(payload).eq('id', productId);
 
@@ -788,7 +805,7 @@ export async function updateMerchantProductStatusAction(formData: FormData) {
   }
 
   revalidatePath('/merchant/products');
-  return { ok: true as const, message: '商品状态已更新。' };
+  redirect(withSuccessMessage(returnTo, successMessage));
 }
 
 export async function duplicateMerchantProductAction(formData: FormData) {
@@ -798,6 +815,7 @@ export async function duplicateMerchantProductAction(formData: FormData) {
   }
 
   const productId = String(formData.get('productId') || '').trim();
+  const returnTo = String(formData.get('returnTo') || '/merchant/products').trim() || '/merchant/products';
   if (!productId) {
     return { ok: false as const, message: '缺少商品 ID。' };
   }
@@ -832,7 +850,7 @@ export async function duplicateMerchantProductAction(formData: FormData) {
   }
 
   revalidatePath('/merchant/products');
-  return { ok: true as const, message: '商品复制成功。' };
+  redirect(withSuccessMessage(returnTo, '商品复制成功'));
 }
 
 export async function getMerchantProductOptions() {
@@ -1236,7 +1254,7 @@ export async function getMerchantInventoryData(searchParams?: {
 
   let query = context.supabase
     .from('inventories')
-    .select('id, product_id, content_preview, content_type, status, batch_no, created_at')
+    .select('id, product_id, content_preview, content_type, status, batch_no, created_at, products(name)')
     .in('product_id', productIds)
     .order('created_at', { ascending: false })
     .limit(300);
@@ -1245,13 +1263,15 @@ export async function getMerchantInventoryData(searchParams?: {
   if (productId) query = query.eq('product_id', productId);
   if (batchNo) query = query.ilike('batch_no', `%${batchNo}%`);
 
-  const { data: inventoryItems, error: inventoryError } = await query;
+  const [{ data: inventoryItems, error: inventoryError }, allInventory] = await Promise.all([
+    query,
+    context.supabase.from('inventories').select('status').in('product_id', productIds),
+  ]);
 
   if (inventoryError) {
     return { ok: false as const, message: inventoryError.message };
   }
 
-  const allInventory = await context.supabase.from('inventories').select('status').in('product_id', productIds);
   const summary = { available: 0, sold: 0, locked: 0, invalid: 0 };
 
   for (const item of allInventory.data || []) {
@@ -1285,17 +1305,25 @@ export async function getMerchantDashboardGuide() {
     .eq('merchant_id', context.merchantProfile.id)
     .maybeSingle();
 
-  const categoryCount = shop
-    ? ((await context.supabase.from('shop_categories').select('id', { count: 'exact', head: true }).eq('shop_id', shop.id)).count ?? 0)
-    : 0;
+  const [categoryCountResult, productsResult, ordersResult] = shop
+    ? await Promise.all([
+        context.supabase.from('shop_categories').select('id', { count: 'exact', head: true }).eq('shop_id', shop.id),
+        context.supabase
+          .from('products')
+          .select('id, name, stock_count, sold_count, status')
+          .eq('shop_id', shop.id)
+          .order('created_at', { ascending: false }),
+        context.supabase
+          .from('orders')
+          .select('order_no, status, payable_amount, created_at, buyer_contact, product_snapshot')
+          .eq('shop_id', shop.id)
+          .order('created_at', { ascending: false })
+          .limit(100),
+      ])
+    : [{ count: 0 }, { data: [] as { id: string; name: string; stock_count: number | null; sold_count: number | null; status: string }[] }, { data: [] as { order_no: string; status: string; payable_amount: number | null; created_at: string; buyer_contact: string | null; product_snapshot: { name?: string } | null }[] }];
 
-  const { data: products } = shop
-    ? await context.supabase
-        .from('products')
-        .select('id, name, stock_count, sold_count, status')
-        .eq('shop_id', shop.id)
-        .order('created_at', { ascending: false })
-    : { data: [] as { id: string; name: string; stock_count: number | null; sold_count: number | null; status: string }[] };
+  const categoryCount = shop ? (categoryCountResult.count ?? 0) : 0;
+  const products = productsResult.data || [];
 
   const productIds = (products || []).map((item) => item.id);
   const productCount = products?.length ?? 0;
@@ -1320,16 +1348,7 @@ export async function getMerchantDashboardGuide() {
       soldCount: Number(item.sold_count || 0),
     }));
 
-  const { data: orders } = shop
-    ? await context.supabase
-        .from('orders')
-        .select('order_no, status, payable_amount, created_at, buyer_contact, product_snapshot')
-        .eq('shop_id', shop.id)
-        .order('created_at', { ascending: false })
-        .limit(100)
-    : { data: [] as { order_no: string; status: string; payable_amount: number | null; created_at: string; buyer_contact: string | null; product_snapshot: { name?: string } | null }[] };
-
-  const orderRows = orders || [];
+  const orderRows = ordersResult.data || [];
   const todayDate = new Date().toISOString().slice(0, 10);
   const todayOrders = orderRows.filter((item) => item.created_at.slice(0, 10) === todayDate);
   const paidStatuses = new Set(['paid', 'delivered']);
@@ -1584,6 +1603,7 @@ export async function triggerMerchantOrderPaymentAction(formData: FormData) {
   }
 
   const orderId = String(formData.get('orderId') || '').trim();
+  const returnTo = String(formData.get('returnTo') || '/merchant/orders').trim() || '/merchant/orders';
   if (!orderId) {
     return { ok: false as const, message: '缺少订单 ID。' };
   }
@@ -1593,13 +1613,13 @@ export async function triggerMerchantOrderPaymentAction(formData: FormData) {
     return detail;
   }
 
-  const result = await processOrderPayment(detail.order.order_no);
+  await processOrderPayment(detail.order.order_no);
   revalidatePath('/merchant/orders');
   revalidatePath(`/merchant/orders/${orderId}`);
   revalidatePath(`/order/${detail.order.order_no}`);
   revalidatePath('/merchant/inventory');
   revalidatePath('/merchant/products');
-  return result;
+  redirect(withSuccessMessage(returnTo, '支付回调已触发'));
 }
 
 export async function closeMerchantOrderAction(formData: FormData) {
@@ -1638,6 +1658,7 @@ export async function appendMerchantOrderRemarkAction(formData: FormData) {
 
   const orderId = String(formData.get('orderId') || '').trim();
   const remark = String(formData.get('remark') || '').trim();
+  const returnTo = String(formData.get('returnTo') || '/merchant/orders').trim() || '/merchant/orders';
 
   if (!orderId || !remark) {
     return { ok: false as const, message: '请填写备注内容。' };
@@ -1652,7 +1673,7 @@ export async function appendMerchantOrderRemarkAction(formData: FormData) {
   revalidatePath('/merchant/orders');
   revalidatePath(`/merchant/orders/${orderId}`);
   revalidatePath(`/order/${detail.order.order_no}`);
-  return { ok: true as const, message: '订单备注已追加。' };
+  redirect(withSuccessMessage(returnTo, '订单备注已追加'));
 }
 
 export async function redeliverMerchantOrderAction(formData: FormData) {
@@ -1662,6 +1683,7 @@ export async function redeliverMerchantOrderAction(formData: FormData) {
   }
 
   const orderId = String(formData.get('orderId') || '').trim();
+  const returnTo = String(formData.get('returnTo') || '/merchant/orders').trim() || '/merchant/orders';
   if (!orderId) {
     return { ok: false as const, message: '缺少订单 ID。' };
   }
@@ -1713,7 +1735,7 @@ export async function redeliverMerchantOrderAction(formData: FormData) {
 
     revalidatePath('/merchant/orders');
     revalidatePath(`/merchant/orders/${orderId}`);
-    return { ok: false as const, message: '库存不足，无法补发。' };
+    redirect(withSuccessMessage(returnTo, '库存不足，无法补发'));
   }
 
   const deliveryResult = inventoryItems.map((item) => ({ type: item.content_type, preview: item.content_preview, content: item.content_encrypted }));
@@ -1749,7 +1771,7 @@ export async function redeliverMerchantOrderAction(formData: FormData) {
   revalidatePath(`/merchant/orders/${orderId}`);
   revalidatePath('/merchant/inventory');
   revalidatePath('/merchant/products');
-  return { ok: true as const, message: '订单已补发。' };
+  redirect(withSuccessMessage(returnTo, '订单已补发'));
 }
 
 export async function manualDeliverMerchantOrderAction(formData: FormData) {

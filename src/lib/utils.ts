@@ -9,6 +9,19 @@ export function formatMoney(value: number) {
   }).format(value);
 }
 
+export function formatBeijingDateTime(value: string | number | Date) {
+  return new Intl.DateTimeFormat('zh-CN', {
+    timeZone: 'Asia/Shanghai',
+    hour12: false,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  }).format(new Date(value));
+}
+
 export function resolveSiteUrl(options?: {
   configuredSiteUrl?: string | null;
   host?: string | null;

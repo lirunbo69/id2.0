@@ -1,4 +1,5 @@
 import { appendMerchantOrderRemarkAction, closeMerchantOrderAction, getMerchantOrders, redeliverMerchantOrderAction, triggerMerchantOrderPaymentAction } from '@/app/merchant/actions';
+import { formatBeijingDateTime } from '@/lib/utils';
 
 type MerchantOrdersPageProps = {
   searchParams: Promise<{ keyword?: string; status?: string; buyerContact?: string; closeOrderId?: string; success?: string }>;
@@ -62,6 +63,8 @@ export default async function MerchantOrdersPage({ searchParams }: MerchantOrder
         </div>
       </section>
 
+      {successMessage ? <section style={successStyle}>{successMessage}</section> : null}
+
       <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16 }}>
         <StatCard label="订单总数" value={String(result.summary.total)} />
         <StatCard label="待支付" value={String(result.summary.pendingPayment)} tone="pending" />
@@ -74,8 +77,6 @@ export default async function MerchantOrdersPage({ searchParams }: MerchantOrder
           <div style={emptyStateStyle}>你还没有店铺，请先完成店铺设置，再开始接单。</div>
         </section>
       ) : null}
-
-      {successMessage ? <section style={successStyle}>{successMessage}</section> : null}
 
       <section style={cardStyle}>
         <h2 style={{ marginTop: 0 }}>筛选条件</h2>
@@ -103,7 +104,7 @@ export default async function MerchantOrdersPage({ searchParams }: MerchantOrder
             </label>
             <div style={{ display: 'flex', alignItems: 'end', gap: 10 }}>
               <button type="submit" style={primaryButtonStyle}>筛选</button>
-              <a href="/merchant/orders" style={secondaryButtonStyle}>重置</a>
+              <a href={buildOrdersPath({ closeOrderId: undefined, success: undefined, keyword: undefined, status: undefined, buyerContact: undefined })} style={secondaryButtonStyle}>重置</a>
             </div>
           </div>
         </form>
@@ -143,9 +144,9 @@ export default async function MerchantOrdersPage({ searchParams }: MerchantOrder
                     <td style={tdStyle}><span style={getStatusBadgeStyle(order.status)}>{order.status}</span></td>
                     <td style={tdStyle}>¥{Number(order.payable_amount || 0).toFixed(2)}</td>
                     <td style={tdStyle}>
-                      <div>下单：{new Date(order.created_at).toLocaleString('zh-CN')}</div>
-                      <div style={{ color: 'var(--muted)', marginTop: 6 }}>支付：{order.paid_at ? new Date(order.paid_at).toLocaleString('zh-CN') : '未支付'}</div>
-                      <div style={{ color: 'var(--muted)', marginTop: 6 }}>发货：{order.delivered_at ? new Date(order.delivered_at).toLocaleString('zh-CN') : '未发货'}</div>
+                      <div>下单：{formatBeijingDateTime(order.created_at)}</div>
+                      <div style={{ color: 'var(--muted)', marginTop: 6 }}>支付：{order.paid_at ? formatBeijingDateTime(order.paid_at) : '未支付'}</div>
+                      <div style={{ color: 'var(--muted)', marginTop: 6 }}>发货：{order.delivered_at ? formatBeijingDateTime(order.delivered_at) : '未发货'}</div>
                     </td>
                     <td style={tdStyle}>
                       <div style={{ display: 'grid', gap: 8 }}>
@@ -167,12 +168,14 @@ export default async function MerchantOrdersPage({ searchParams }: MerchantOrder
                         {order.status === 'pending_payment' ? (
                           <form action={submitPayAction}>
                             <input type="hidden" name="orderId" value={order.id} />
+                            <input type="hidden" name="returnTo" value={buildOrdersPath({ closeOrderId: undefined, success: undefined })} />
                             <button type="submit" style={actionButtonStyle}>触发支付回调</button>
                           </form>
                         ) : null}
                         {(order.status === 'paid' || order.status === 'delivery_failed') ? (
                           <form action={submitRedeliverAction}>
                             <input type="hidden" name="orderId" value={order.id} />
+                            <input type="hidden" name="returnTo" value={buildOrdersPath({ closeOrderId: undefined, success: undefined })} />
                             <button type="submit" style={actionButtonStyle}>自动补发</button>
                           </form>
                         ) : null}
@@ -181,6 +184,7 @@ export default async function MerchantOrdersPage({ searchParams }: MerchantOrder
                         ) : null}
                         <form action={submitRemarkAction} style={{ display: 'grid', gap: 6 }}>
                           <input type="hidden" name="orderId" value={order.id} />
+                          <input type="hidden" name="returnTo" value={buildOrdersPath({ closeOrderId: undefined, success: undefined })} />
                           <input name="remark" placeholder="追加内部备注" style={miniInputStyle} />
                           <button type="submit" style={secondaryMiniButtonStyle}>追加备注</button>
                         </form>

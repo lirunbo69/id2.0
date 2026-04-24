@@ -1,4 +1,5 @@
 import { createMerchantWithdrawalAction, getMerchantFinanceOverview } from '@/app/merchant/actions';
+import { formatBeijingDateTime } from '@/lib/utils';
 
 export default async function MerchantWithdrawPage() {
   async function submitWithdraw(formData: FormData) {
@@ -80,7 +81,7 @@ export default async function MerchantWithdrawPage() {
                 <div style={{ color: 'var(--muted)', marginTop: 8 }}>{record.channel} · {record.account_name}</div>
                 <div style={{ color: '#94a3b8', marginTop: 6 }}>{record.account_no}</div>
                 {record.remark ? <div style={{ color: '#8b9bb6', marginTop: 6 }}>{record.remark}</div> : null}
-                <div style={{ color: '#8b9bb6', marginTop: 6 }}>{new Date(record.created_at).toLocaleString('zh-CN')}</div>
+                <div style={{ color: '#8b9bb6', marginTop: 6 }}>{formatBeijingDateTime(record.created_at)}</div>
               </div>
             )) : <div style={emptyStateStyle}>暂无提现申请记录。</div>}
           </div>
