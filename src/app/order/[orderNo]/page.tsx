@@ -1,4 +1,4 @@
-import { getOrderDetail, initiateAlipayPaymentAction, simulatePayOrderAction } from '@/app/shop-actions';
+import { getOrderDetail, initiateAlipayPaymentAction } from '@/app/shop-actions';
 import { isAlipayTradeSuccess, verifyAlipayNotify } from '@/lib/alipay';
 import { processOrderPayment } from '@/lib/order-flow';
 
@@ -28,11 +28,6 @@ export default async function OrderDetailPage({ params, searchParams }: OrderDet
   }
 
   const result = await getOrderDetail(orderNo);
-
-  async function simulatePay(formData: FormData) {
-    'use server';
-    await simulatePayOrderAction(formData);
-  }
 
   async function payWithAlipay(formData: FormData) {
     'use server';
@@ -98,7 +93,7 @@ export default async function OrderDetailPage({ params, searchParams }: OrderDet
             </div>
           ) : (
             <div style={{ color: 'var(--muted)', marginTop: 12 }}>
-              {order.status === 'pending_payment' ? '请先完成支付。你也可以用下方按钮模拟支付回调，系统会按正式回调链路尝试自动发货。' : '当前暂无发货结果。'}
+              {order.status === 'pending_payment' ? '请先完成支付，支付成功后系统会自动发货并展示结果。' : '当前暂无发货结果。'}
             </div>
           )}
         </section>
@@ -111,10 +106,6 @@ export default async function OrderDetailPage({ params, searchParams }: OrderDet
               buttonLabel="前往支付宝支付"
               buttonStyle={buttonStyle}
             />
-            <form action={simulatePay}>
-              <input type="hidden" name="orderNo" value={order.order_no} />
-              <button type="submit" style={secondaryButtonStyle}>模拟支付回调并执行发货</button>
-            </form>
           </div>
         ) : null}
 
