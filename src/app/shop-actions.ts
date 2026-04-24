@@ -101,12 +101,20 @@ export async function initiateAlipayPaymentAction(formData: FormData) {
 export async function queryOrderAction(formData: FormData) {
   const orderNo = String(formData.get('orderNo') || '').trim();
   const queryToken = String(formData.get('queryToken') || '').trim();
-  const supabase = await createServerSupabaseClient();
+  const supabase = createServiceRoleSupabaseClient();
 
   await releaseExpiredPendingOrders();
 
+  const buildQueryPath = (message: string) => {
+    const params = new URLSearchParams();
+    if (orderNo) params.set('orderNo', orderNo);
+    if (queryToken) params.set('queryToken', queryToken);
+    params.set('error', message);
+    return `/order/query?${params.toString()}`;
+  };
+
   if (!orderNo || !queryToken) {
-    throw new Error('请输入订单号和查询密钥。');
+    redirect(buildQueryPath('请输入订单号和查询密钥。'));
   }
 
   const { data, error } = await supabase
@@ -117,7 +125,7 @@ export async function queryOrderAction(formData: FormData) {
     .maybeSingle();
 
   if (error || !data) {
-    throw new Error('订单号或查询密钥不正确。');
+    redirect(buildQueryPath('订单号或查询密钥不正确。'));
   }
 
   redirect(`/order/${orderNo}`);
