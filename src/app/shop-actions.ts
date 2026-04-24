@@ -75,6 +75,7 @@ export async function simulatePayOrderAction(formData: FormData) {
 
 export async function initiateAlipayPaymentAction(formData: FormData) {
   const orderNo = String(formData.get('orderNo') || '').trim();
+  const channel = String(formData.get('channel') || 'pc').trim() === 'wap' ? 'wap' : 'pc';
   if (!orderNo) throw new Error('缺少订单号。');
 
   const order = await getOrderPaymentSnapshot(orderNo);
@@ -83,14 +84,16 @@ export async function initiateAlipayPaymentAction(formData: FormData) {
   }
 
   const productSnapshot = (order.product_snapshot || {}) as { name?: string };
-  const siteUrl = await getSiteUrl();
-  const payUrl = buildAlipayPagePayUrl({
-    orderNo: order.order_no,
-    amount: Number(order.payable_amount || 0),
-    subject: productSnapshot.name || `千寻订单 ${order.order_no}`,
-    notifyUrl: `${siteUrl}/api/payment/callback`,
-    returnUrl: `${siteUrl}/order/${order.order_no}`,
-  });
+  const payUrl = await getAlipayPayUrl(
+    order.order_no,
+    Number(order.payable_amount || 0),
+    productSnapshot.name || `千寻订单 ${order.order_no}`,
+    channel,
+  );
+
+  if (!payUrl) {
+    redirect(`/order/${orderNo}`);
+  }
 
   redirect(payUrl);
 }

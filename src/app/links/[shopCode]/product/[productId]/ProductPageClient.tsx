@@ -64,8 +64,12 @@ export default function ProductPageClient({ shopCode, shopName, product }: Produ
   async function handleConfirmPay() {
     if (!state.orderNo || !state.amount || !state.productName) return;
     setPayLoading(true);
+    if (isMobile) {
+      window.location.href = `/order/${state.orderNo}?pay=1`;
+      return;
+    }
     try {
-      const payUrl = await getAlipayPayUrl(state.orderNo, state.amount, state.productName, isMobile ? 'wap' : 'pc');
+      const payUrl = await getAlipayPayUrl(state.orderNo, state.amount, state.productName, 'pc');
       if (payUrl) {
         window.location.href = payUrl;
       } else {

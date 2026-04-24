@@ -2,6 +2,8 @@ import { getOrderDetail, initiateAlipayPaymentAction, simulatePayOrderAction } f
 import { isAlipayTradeSuccess, verifyAlipayNotify } from '@/lib/alipay';
 import { processOrderPayment } from '@/lib/order-flow';
 
+import { AutoSubmitForm, OrderAutoRefresh } from './OrderAutoClient';
+
 type OrderDetailPageProps = {
   params: Promise<{ orderNo: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -45,9 +47,17 @@ export default async function OrderDetailPage({ params, searchParams }: OrderDet
   const productSnapshot = order.product_snapshot as { name?: string; subtitle?: string; delivery_type?: string } | null;
   const deliveryItems = Array.isArray(order.delivery_result) ? order.delivery_result as { preview?: string; content?: string; type?: string }[] : [];
   const canPay = order.status === 'pending_payment';
+  const shouldAutoPay = String(resolvedSearchParams.pay || '') === '1' && canPay;
+  const shouldAutoRefresh = order.status === 'pending_payment' || order.status === 'paid';
 
   return (
     <main style={{ maxWidth: 880, margin: '0 auto', padding: '48px 24px 80px' }}>
+      <AutoSubmitForm
+        action={payWithAlipay}
+        enabled={shouldAutoPay}
+        fields={{ orderNo: order.order_no, channel: 'wap' }}
+      />
+      <OrderAutoRefresh enabled={shouldAutoRefresh} />
       <section style={cardStyle}>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
           <div>
