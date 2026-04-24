@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useEffect, useState } from 'react';
+import { useActionState, useEffect, useMemo, useState } from 'react';
 
 import { createOrderAndReturnAction, getAlipayPayUrl } from '@/app/shop-actions';
 
@@ -42,6 +42,7 @@ export default function ProductPageClient({ shopCode, shopName, product }: Produ
   const [showModal, setShowModal] = useState(false);
   const [payLoading, setPayLoading] = useState(false);
   const isAutoDelivery = ['card_key', 'account_password', 'link', 'custom_text'].includes(product.delivery_type);
+  const isMobile = useMemo(() => typeof window !== 'undefined' && window.innerWidth <= 768, []);
 
   useEffect(() => {
     const prev = document.documentElement.getAttribute('data-theme');
@@ -64,7 +65,7 @@ export default function ProductPageClient({ shopCode, shopName, product }: Produ
     if (!state.orderNo || !state.amount || !state.productName) return;
     setPayLoading(true);
     try {
-      const payUrl = await getAlipayPayUrl(state.orderNo, state.amount, state.productName);
+      const payUrl = await getAlipayPayUrl(state.orderNo, state.amount, state.productName, isMobile ? 'wap' : 'pc');
       if (payUrl) {
         window.location.href = payUrl;
       } else {
@@ -146,7 +147,7 @@ export default function ProductPageClient({ shopCode, shopName, product }: Produ
 
             <div style={{ display: 'grid', gap: 14 }}>
               <ConfirmRow label="支付金额" value={`${state.amount?.toFixed(2)} 元`} highlight />
-              <ConfirmRow label="支付方式" value="支付宝PC通道" />
+              <ConfirmRow label="支付方式" value={isMobile ? '支付宝H5通道' : '支付宝PC通道'} />
               <ConfirmRow label="订单编号" value={state.orderNo} mono />
               <ConfirmRow label="商品名称" value={state.productName || '-'} />
               <ConfirmRow label="购买数量" value={String(state.quantity || 1)} />

@@ -4,7 +4,7 @@ import { headers } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
-import { buildAlipayPagePayUrl } from '@/lib/alipay';
+import { buildAlipayPagePayUrl, buildAlipayWapPayUrl } from '@/lib/alipay';
 import { createServerSupabaseClient, createServiceRoleSupabaseClient } from '@/lib/supabase';
 import { isAutoDeliveryType, processOrderPayment, releaseExpiredPendingOrders, reserveInventoryForOrder } from '@/lib/order-flow';
 import { resolveSiteUrl } from '@/lib/utils';
@@ -166,7 +166,7 @@ export async function getPublicProductDetail(shopCode: string, productId: string
 }
 
 export async function createOrderAction(formData: FormData) {
-  const supabase = await createServerSupabaseClient();
+  const supabase = createServiceRoleSupabaseClient();
   await releaseExpiredPendingOrders();
 
   const shopCode = String(formData.get('shopCode') || '').trim();
@@ -202,8 +202,7 @@ export async function createOrderAction(formData: FormData) {
     throw new Error('当前库存不足，无法创建订单。');
   }
 
-  const { data: userData } = await supabase.auth.getUser();
-  const buyerId = userData.user?.id || null;
+  const buyerId = null;
   const unitPrice = Number(product.price);
   const totalAmount = unitPrice * quantity;
   const orderNo = makeOrderNo();
@@ -258,7 +257,7 @@ export async function createOrderAndReturnAction(
   _prevState: { ok: boolean; message: string; orderNo?: string; amount?: number; productName?: string; quantity?: number; queryToken?: string },
   formData: FormData,
 ): Promise<{ ok: boolean; message: string; orderNo?: string; amount?: number; productName?: string; quantity?: number; queryToken?: string }> {
-  const supabase = await createServerSupabaseClient();
+  const supabase = createServiceRoleSupabaseClient();
   await releaseExpiredPendingOrders();
 
   const shopCode = String(formData.get('shopCode') || '').trim();
@@ -295,8 +294,7 @@ export async function createOrderAndReturnAction(
       return { ok: false, message: '当前库存不足，无法创建订单。' };
     }
 
-    const { data: userData } = await supabase.auth.getUser();
-    const buyerId = userData.user?.id || null;
+    const buyerId = null;
     const unitPrice = Number(product.price);
     const totalAmount = unitPrice * quantity;
     const orderNo = makeOrderNo();
@@ -359,18 +357,23 @@ export async function createOrderAndReturnAction(
   }
 }
 
-export async function getAlipayPayUrl(orderNo: string, amount: number, subject: string) {
+export async function getAlipayPayUrl(orderNo: string, amount: number, subject: string, channel: 'pc' | 'wap' = 'pc') {
   const siteUrl = await getSiteUrl();
   const hasAlipayConfig = !!(process.env.ALIPAY_APP_ID && process.env.ALIPAY_APP_PRIVATE_KEY && process.env.ALIPAY_PUBLIC_KEY);
   if (!hasAlipayConfig) return null;
 
-  return buildAlipayPagePayUrl({
+  const commonParams = {
     orderNo,
     amount,
     subject,
     notifyUrl: `${siteUrl}/api/payment/callback`,
     returnUrl: `${siteUrl}/order/${orderNo}`,
-  });
+    quitUrl: `${siteUrl}/order/${orderNo}`,
+  };
+
+  return channel === 'wap'
+    ? buildAlipayWapPayUrl(commonParams)
+    : buildAlipayPagePayUrl(commonParams);
 }
 
 export async function getOrderDetail(orderNo: string) {

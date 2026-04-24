@@ -6,6 +6,7 @@ export type AlipayPagePayParams = {
   subject: string;
   notifyUrl?: string;
   returnUrl?: string;
+  quitUrl?: string;
 };
 
 type AlipayTradeStatus = 'WAIT_BUYER_PAY' | 'TRADE_CLOSED' | 'TRADE_SUCCESS' | 'TRADE_FINISHED';
@@ -101,6 +102,41 @@ export function buildAlipayPagePayUrl(params: AlipayPagePayParams) {
       total_amount: params.amount.toFixed(2),
       subject: params.subject,
       product_code: 'FAST_INSTANT_TRADE_PAY',
+    }),
+  };
+
+  const signContent = buildSignContent(requestParams);
+  requestParams.sign = sign(signContent, config.privateKey);
+
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(requestParams)) {
+    if (value) {
+      query.set(key, value);
+    }
+  }
+
+  return `${config.gateway}?${query.toString()}`;
+}
+
+export function buildAlipayWapPayUrl(params: AlipayPagePayParams) {
+  const config = getConfig();
+
+  const requestParams: Record<string, string> = {
+    app_id: config.appId,
+    method: 'alipay.trade.wap.pay',
+    format: FORMAT,
+    charset: CHARSET,
+    sign_type: SIGN_TYPE,
+    timestamp: formatTimestamp(),
+    version: VERSION,
+    notify_url: params.notifyUrl || '',
+    return_url: params.returnUrl || '',
+    biz_content: JSON.stringify({
+      out_trade_no: params.orderNo,
+      total_amount: params.amount.toFixed(2),
+      subject: params.subject,
+      product_code: 'QUICK_WAP_WAY',
+      quit_url: params.quitUrl || params.returnUrl || '',
     }),
   };
 
