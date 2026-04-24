@@ -65,11 +65,15 @@ export default function ProductPageClient({ shopCode, shopName, product }: Produ
           window.sessionStorage.removeItem('pending-mobile-order');
           return;
         }
-        window.location.href = `/order/${data.orderNo}`;
+        if (window.location.pathname !== `/order/${data.orderNo}`) {
+          window.location.href = `/order/${data.orderNo}`;
+        }
       } catch {
         window.sessionStorage.removeItem('pending-mobile-order');
       }
     };
+
+    syncBackToOrder();
 
     const onVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
