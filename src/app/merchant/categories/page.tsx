@@ -1,7 +1,8 @@
 import { createMerchantCategoryAction, deleteMerchantCategoryAction, getMerchantCategories, toggleMerchantCategoryAction, updateMerchantCategoryAction } from '@/app/merchant/actions';
+import ActionToast from '@/components/action-toast';
 import { formatBeijingDateTime } from '@/lib/utils';
 
-export default async function MerchantCategoriesPage({ searchParams }: { searchParams: Promise<{ success?: string }> }) {
+export default async function MerchantCategoriesPage({ searchParams }: { searchParams: Promise<{ success?: string; error?: string }> }) {
   async function submitCategory(formData: FormData) {
     'use server';
     await createMerchantCategoryAction(formData);
@@ -23,7 +24,7 @@ export default async function MerchantCategoriesPage({ searchParams }: { searchP
   }
 
   const result = await getMerchantCategories();
-  const { success = '' } = await searchParams;
+  const { success = '', error = '' } = await searchParams;
 
   if (!result.ok) {
     return <main style={{ display: 'grid', gap: 24 }}><section style={cardStyle}><h1 style={{ marginTop: 0 }}>分类管理</h1><p style={{ color: '#fca5a5' }}>{result.message}</p></section></main>;
@@ -31,6 +32,7 @@ export default async function MerchantCategoriesPage({ searchParams }: { searchP
 
   return (
     <main style={{ display: 'grid', gap: 24 }}>
+      <ActionToast success={success} error={error} />
       <section style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 20, flexWrap: 'wrap' }}>
         <div>
           <h1 style={{ marginTop: 0, marginBottom: 8, fontSize: 32 }}>分类管理</h1>
@@ -40,7 +42,6 @@ export default async function MerchantCategoriesPage({ searchParams }: { searchP
 
       {!result.hasShop ? <section style={cardStyle}><div style={warnStyle}>请先创建店铺，再创建商品分类。</div></section> : null}
 
-      {success ? <section style={successStyle}>{success}</section> : null}
 
       <section style={cardStyle}>
         <h2 style={{ marginTop: 0 }}>新建分类</h2>
@@ -115,7 +116,6 @@ export default async function MerchantCategoriesPage({ searchParams }: { searchP
 
 const cardStyle: React.CSSProperties = { padding: 20, borderRadius: 20, border: '1px solid rgba(148,163,184,.12)', background: 'var(--card)', boxShadow: '0 10px 30px rgba(2,6,23,.22)' };
 const warnStyle: React.CSSProperties = { padding: 16, borderRadius: 14, background: 'rgba(251,191,36,.1)', color: '#fcd34d' };
-const successStyle: React.CSSProperties = { padding: 16, borderRadius: 14, background: 'rgba(16,185,129,.12)', color: '#86efac', border: '1px solid rgba(16,185,129,.22)' };
 const inputStyle: React.CSSProperties = { padding: '12px 14px', borderRadius: 12, border: '1px solid rgba(148,163,184,.16)', background: 'rgba(255,255,255,.03)', color: 'var(--foreground)' };
 const textareaStyle: React.CSSProperties = { ...inputStyle, resize: 'vertical' };
 const buttonStyle: React.CSSProperties = { width: 'fit-content', padding: '12px 16px', borderRadius: 12, border: 'none', background: 'var(--primary)', color: '#fff', fontWeight: 700, cursor: 'pointer' };

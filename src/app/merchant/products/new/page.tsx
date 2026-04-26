@@ -1,6 +1,8 @@
 import { createMerchantProductAction, getMerchantProductOptions, getMerchantShopDetail } from '@/app/merchant/actions';
+import ActionToast from '@/components/action-toast';
+import { CoverImageUploadField, UsageGuideImagesUploadField } from '../ProductImageUploadFields';
 
-export default async function MerchantProductCreatePage({ searchParams }: { searchParams: Promise<{ success?: string }> }) {
+export default async function MerchantProductCreatePage({ searchParams }: { searchParams: Promise<{ success?: string; error?: string }> }) {
   async function submitProductForm(formData: FormData) {
     'use server';
 
@@ -9,7 +11,7 @@ export default async function MerchantProductCreatePage({ searchParams }: { sear
 
   const shopResult = await getMerchantShopDetail();
   const optionsResult = await getMerchantProductOptions();
-  const { success = '' } = await searchParams;
+  const { success = '', error = '' } = await searchParams;
 
   if (!shopResult.ok) {
     return (
@@ -38,9 +40,9 @@ export default async function MerchantProductCreatePage({ searchParams }: { sear
 
   return (
     <main style={{ maxWidth: 1100, margin: '0 auto', padding: '32px 24px 80px' }}>
+      <ActionToast success={success} error={error} />
       <section style={{ padding: 28, borderRadius: 24, border: '1px solid var(--border)', background: 'var(--card)' }}>
         <h1 style={{ marginTop: 0 }}>新建商品</h1>
-        {success ? <div style={successStyle}>{success}</div> : null}
         <p style={{ color: 'var(--muted)', lineHeight: 1.8 }}>
           当前表单会直接写入 `products` 表，现已支持选择真实商品分类。
         </p>
@@ -68,11 +70,7 @@ export default async function MerchantProductCreatePage({ searchParams }: { sear
                 ))}
               </select>
             </label>
-            <label style={{ display: 'grid', gap: 8 }}>
-              <span>封面图片（可上传或粘贴 URL）</span>
-              <input name="coverUrl" placeholder="https://...（可选）" style={inputStyle} />
-              <input name="coverFile" type="file" accept="image/*" style={inputStyle} />
-            </label>
+            <CoverImageUploadField />
           </div>
 
           <label style={{ display: 'grid', gap: 8 }}>
@@ -114,8 +112,8 @@ export default async function MerchantProductCreatePage({ searchParams }: { sear
           <label style={{ display: 'grid', gap: 8 }}>
             <span>使用说明</span>
             <textarea name="usageGuide" rows={4} style={textareaStyle} />
-            <input name="usageGuideImages" type="file" accept="image/*" multiple style={inputStyle} />
           </label>
+          <UsageGuideImagesUploadField />
           <label style={{ display: 'grid', gap: 8 }}><span>购买须知</span><textarea name="noticeText" rows={4} style={textareaStyle} /></label>
           <label style={{ display: 'grid', gap: 8 }}><span>售后规则</span><textarea name="refundPolicy" rows={4} style={textareaStyle} /></label>
 
@@ -136,6 +134,5 @@ export default async function MerchantProductCreatePage({ searchParams }: { sear
 
 const inputStyle: React.CSSProperties = { width: '100%', padding: '12px 14px', borderRadius: 12, border: '1px solid var(--border)', background: 'rgba(255,255,255,.03)', color: 'var(--foreground)' };
 const textareaStyle: React.CSSProperties = { ...inputStyle, resize: 'vertical' };
-const successStyle: React.CSSProperties = { marginBottom: 16, padding: 16, borderRadius: 14, background: 'rgba(16,185,129,.12)', color: '#86efac', border: '1px solid rgba(16,185,129,.22)' };
 const buttonStyle: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 'fit-content', padding: '14px 18px', borderRadius: 14, border: 'none', background: 'var(--primary)', color: '#fff', fontWeight: 700, cursor: 'pointer' };
 const checkboxLabelStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 8 };

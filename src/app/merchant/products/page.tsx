@@ -1,9 +1,10 @@
 import { deleteMerchantProductAction, duplicateMerchantProductAction, getMerchantProducts, moveMerchantProductOrderAction, updateMerchantProductStatusAction } from '@/app/merchant/actions';
+import ActionToast from '@/components/action-toast';
 import { formatBeijingDateTime } from '@/lib/utils';
 import DeleteProductButton from './DeleteProductButton';
 
 type MerchantProductsPageProps = {
-  searchParams: Promise<{ keyword?: string; status?: string; categoryId?: string; success?: string }>;
+  searchParams: Promise<{ keyword?: string; status?: string; categoryId?: string; success?: string; error?: string }>;
 };
 
 export default async function MerchantProductsPage({ searchParams }: MerchantProductsPageProps) {
@@ -20,6 +21,7 @@ export default async function MerchantProductsPage({ searchParams }: MerchantPro
   };
   const result = await getMerchantProducts(filters);
   const successMessage = String(filters.success || '').trim();
+  const errorMessage = String(filters.error || '').trim();
 
   async function submitStatusAction(formData: FormData) {
     'use server';
@@ -54,6 +56,7 @@ export default async function MerchantProductsPage({ searchParams }: MerchantPro
 
   return (
     <main style={{ display: 'grid', gap: 24 }}>
+      <ActionToast success={successMessage} error={errorMessage} />
       <section style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
         <div>
           <h1 style={{ margin: '0 0 10px', fontSize: 32 }}>商品管理</h1>
@@ -71,7 +74,6 @@ export default async function MerchantProductsPage({ searchParams }: MerchantPro
         </section>
       ) : null}
 
-      {successMessage ? <section style={successStyle}>{successMessage}</section> : null}
 
       <section style={cardStyle}>
         <h2 style={{ marginTop: 0 }}>筛选条件</h2>

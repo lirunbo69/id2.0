@@ -32,16 +32,65 @@ function withSuccessMessage(path: string, message: string) {
   return `${pathname}?${params.toString()}`;
 }
 
+function withErrorMessage(path: string, message: string) {
+  const [pathname, queryString = ''] = path.split('?');
+  const params = new URLSearchParams(queryString);
+  params.set('error', message);
+  return `${pathname}?${params.toString()}`;
+}
+
 function toUploadFile(value: FormDataEntryValue | null) {
   if (!value || typeof value === 'string') return null;
   if (!('size' in value) || value.size <= 0) return null;
   return value;
 }
 
+async function ensurePublicProductImageBucket() {
+  const supabase = createServiceRoleSupabaseClient();
+  const bucket = process.env.NEXT_PUBLIC_SUPABASE_PRODUCT_IMAGE_BUCKET || 'product-images';
+
+  const { data: bucketInfo, error: getError } = await supabase.storage.getBucket(bucket);
+
+  if (getError) {
+    const { error: createError } = await supabase.storage.createBucket(bucket, {
+      public: true,
+      fileSizeLimit: 10 * 1024 * 1024,
+      allowedMimeTypes: ['image/*'],
+    });
+
+    if (createError) {
+      console.error('ensurePublicProductImageBucket create error:', createError.message);
+      return null;
+    }
+
+    return bucket;
+  }
+
+  if (bucketInfo && !bucketInfo.public) {
+    const { error: updateError } = await supabase.storage.updateBucket(bucket, {
+      public: true,
+      fileSizeLimit: 10 * 1024 * 1024,
+      allowedMimeTypes: ['image/*'],
+    });
+
+    if (updateError) {
+      console.error('ensurePublicProductImageBucket update error:', updateError.message);
+      return null;
+    }
+  }
+
+  return bucket;
+}
+
 async function uploadMerchantProductImage(file: File, merchantId: string, folder: 'cover' | 'usage-guide') {
   try {
     const supabase = createServiceRoleSupabaseClient();
-    const bucket = process.env.NEXT_PUBLIC_SUPABASE_PRODUCT_IMAGE_BUCKET || 'product-images';
+    const bucket = await ensurePublicProductImageBucket();
+
+    if (!bucket) {
+      return null;
+    }
+
     const ext = file.name.includes('.') ? file.name.split('.').pop() : 'jpg';
     const objectPath = `${merchantId}/${folder}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
 
@@ -489,12 +538,11 @@ export async function deleteMerchantCategoryAction(formData: FormData) {
 }
 
 export async function createMerchantProductAction(formData: FormData) {
+  const returnTo = String(formData.get('returnTo') || '/merchant/products/new').trim() || '/merchant/products/new';
   const context = await getCurrentMerchantContext();
   if (!context.ok) {
-    return context;
+    redirect(withErrorMessage(returnTo, context.message));
   }
-
-  const returnTo = String(formData.get('returnTo') || '/merchant/products/new').trim() || '/merchant/products/new';
 
   const { data: shop } = await context.supabase
     .from('shops')
@@ -503,10 +551,7 @@ export async function createMerchantProductAction(formData: FormData) {
     .maybeSingle();
 
   if (!shop) {
-    return {
-      ok: false as const,
-      message: '请先创建店铺后再发布商品。',
-    };
+    redirect(withErrorMessage(returnTo, '请先创建店铺后再发布商品。'));
   }
 
   const categoryIdRaw = String(formData.get('categoryId') || '').trim();
@@ -518,7 +563,6 @@ export async function createMerchantProductAction(formData: FormData) {
   const noticeText = String(formData.get('noticeText') || '').trim();
   const refundPolicy = String(formData.get('refundPolicy') || '').trim();
   const deliveryType = String(formData.get('deliveryType') || 'card_key').trim();
-  const coverUrlInput = String(formData.get('coverUrl') || '').trim();
   const coverFile = toUploadFile(formData.get('coverFile'));
   const usageGuideImageFiles = formData.getAll('usageGuideImages').map(toUploadFile).filter((file): file is File => Boolean(file));
   const priceValue = Number(formData.get('price') || 0);
@@ -531,20 +575,20 @@ export async function createMerchantProductAction(formData: FormData) {
   const needRemark = formData.get('needRemark') === 'on';
 
   if (!name) {
-    return { ok: false as const, message: '商品名称不能为空。' };
+    redirect(withErrorMessage(returnTo, '商品名称不能为空。'));
   }
 
   if (!priceValue || Number.isNaN(priceValue) || priceValue <= 0) {
-    return { ok: false as const, message: '商品价格必须大于 0。' };
+    redirect(withErrorMessage(returnTo, '商品价格必须大于 0。'));
   }
 
   if (minPurchaseQty <= 0 || maxPurchaseQty <= 0 || minPurchaseQty > maxPurchaseQty) {
-    return { ok: false as const, message: '购买数量范围不合法。' };
+    redirect(withErrorMessage(returnTo, '购买数量范围不合法。'));
   }
 
   const coverUrl = coverFile
-    ? (await uploadMerchantProductImage(coverFile, context.merchantProfile.id, 'cover')) || coverUrlInput || null
-    : (coverUrlInput || null);
+    ? (await uploadMerchantProductImage(coverFile, context.merchantProfile.id, 'cover')) || null
+    : null;
 
   const usageGuideValue = await buildUsageGuideWithUploadedImages(usageGuide, usageGuideImageFiles, context.merchantProfile.id);
 
@@ -1139,9 +1183,10 @@ export async function getMerchantProductDetail(productId: string) {
 }
 
 export async function updateMerchantProductAction(formData: FormData) {
+  const returnTo = String(formData.get('returnTo') || '/merchant/products').trim() || '/merchant/products';
   const context = await getCurrentMerchantContext();
   if (!context.ok) {
-    return context;
+    redirect(withErrorMessage(returnTo, context.message));
   }
 
   const productId = String(formData.get('productId') || '').trim();
@@ -1154,7 +1199,6 @@ export async function updateMerchantProductAction(formData: FormData) {
   const noticeText = String(formData.get('noticeText') || '').trim();
   const refundPolicy = String(formData.get('refundPolicy') || '').trim();
   const deliveryType = String(formData.get('deliveryType') || 'card_key').trim();
-  const coverUrlInput = String(formData.get('coverUrl') || '').trim();
   const coverFile = toUploadFile(formData.get('coverFile'));
   const usageGuideImageFiles = formData.getAll('usageGuideImages').map(toUploadFile).filter((file): file is File => Boolean(file));
   const priceValue = Number(formData.get('price') || 0);
@@ -1168,15 +1212,15 @@ export async function updateMerchantProductAction(formData: FormData) {
   const status = String(formData.get('status') || 'active').trim();
 
   if (!productId || !name) {
-    return { ok: false as const, message: '商品参数不完整。' };
+    redirect(withErrorMessage(returnTo, '商品参数不完整。'));
   }
 
   if (!priceValue || Number.isNaN(priceValue) || priceValue <= 0) {
-    return { ok: false as const, message: '商品价格必须大于 0。' };
+    redirect(withErrorMessage(returnTo, '商品价格必须大于 0。'));
   }
 
   if (minPurchaseQty <= 0 || maxPurchaseQty <= 0 || minPurchaseQty > maxPurchaseQty) {
-    return { ok: false as const, message: '购买数量范围不合法。' };
+    redirect(withErrorMessage(returnTo, '购买数量范围不合法。'));
   }
 
   const { data: shop } = await context.supabase
@@ -1186,22 +1230,22 @@ export async function updateMerchantProductAction(formData: FormData) {
     .maybeSingle();
 
   if (!shop) {
-    return { ok: false as const, message: '请先完成店铺设置。' };
+    redirect(withErrorMessage(returnTo, '请先完成店铺设置。'));
   }
 
   const { data: product, error: productError } = await context.supabase
     .from('products')
-    .select('id, shop_id')
+    .select('id, shop_id, cover_url')
     .eq('id', productId)
     .maybeSingle();
 
   if (productError || !product || product.shop_id !== shop.id) {
-    return { ok: false as const, message: '商品不存在或无权限编辑。' };
+    redirect(withErrorMessage(returnTo, '商品不存在或无权限编辑。'));
   }
 
   const coverUrl = coverFile
-    ? await uploadMerchantProductImage(coverFile, context.merchantProfile.id, 'cover')
-    : (coverUrlInput || null);
+    ? (await uploadMerchantProductImage(coverFile, context.merchantProfile.id, 'cover')) || product.cover_url || null
+    : (product.cover_url || null);
 
   const usageGuideValue = await buildUsageGuideWithUploadedImages(usageGuide, usageGuideImageFiles, context.merchantProfile.id);
 
@@ -1231,13 +1275,14 @@ export async function updateMerchantProductAction(formData: FormData) {
     .eq('id', productId);
 
   if (error) {
-    return { ok: false as const, message: error.message };
+    redirect(withErrorMessage(returnTo, error.message));
   }
 
   revalidatePath('/merchant/products');
   revalidatePath(`/merchant/products/${productId}/edit`);
   revalidatePath(`/links/${shop.shop_code}`);
-  return { ok: true as const, message: '商品已更新。' };
+  revalidatePath(`/links/${shop.shop_code}/product/${productId}`);
+  redirect(withSuccessMessage(returnTo, '商品已更新。'));
 }
 
 export async function createSingleMerchantInventoryAction(formData: FormData) {

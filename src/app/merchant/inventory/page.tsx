@@ -1,8 +1,9 @@
 import { createMerchantInventoryAction, createSingleMerchantInventoryAction, getMerchantInventoryData, getMerchantInventoryDetail, invalidateMerchantInventoryAction, updateMerchantInventoryAction } from '@/app/merchant/actions';
+import ActionToast from '@/components/action-toast';
 import { formatBeijingDateTime } from '@/lib/utils';
 
 type MerchantInventoryPageProps = {
-  searchParams: Promise<{ productId?: string; status?: string; batchNo?: string; inventoryId?: string; success?: string }>;
+  searchParams: Promise<{ productId?: string; status?: string; batchNo?: string; inventoryId?: string; success?: string; error?: string }>;
 };
 
 export default async function MerchantInventoryPage({ searchParams }: MerchantInventoryPageProps) {
@@ -15,6 +16,7 @@ export default async function MerchantInventoryPage({ searchParams }: MerchantIn
     if (merged.batchNo) params.set('batchNo', merged.batchNo);
     if (merged.inventoryId) params.set('inventoryId', merged.inventoryId);
     if (merged.success) params.set('success', merged.success);
+    if (merged.error) params.set('error', merged.error);
     const query = params.toString();
     return query ? `/merchant/inventory?${query}` : '/merchant/inventory';
   };
@@ -43,6 +45,7 @@ export default async function MerchantInventoryPage({ searchParams }: MerchantIn
   const selectedInventoryId = String(filters.inventoryId || '').trim();
   const inventoryDetail = selectedInventoryId ? await getMerchantInventoryDetail(selectedInventoryId) : null;
   const successMessage = String(filters.success || '').trim();
+  const errorMessage = String(filters.error || '').trim();
 
   if (!result.ok) {
     return <main style={{ display: 'grid', gap: 24 }}><section style={cardStyle}><h1 style={{ marginTop: 0 }}>库存管理</h1><p style={{ color: '#fca5a5' }}>{result.message}</p></section></main>;
@@ -50,6 +53,7 @@ export default async function MerchantInventoryPage({ searchParams }: MerchantIn
 
   return (
     <main style={{ display: 'grid', gap: 24 }}>
+      <ActionToast success={successMessage} error={errorMessage} />
       <section style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 20, flexWrap: 'wrap' }}>
         <div>
           <h1 style={{ marginTop: 0, marginBottom: 8, fontSize: 32 }}>库存管理</h1>
@@ -66,7 +70,6 @@ export default async function MerchantInventoryPage({ searchParams }: MerchantIn
 
       {!result.hasShop ? <section style={cardStyle}><div style={warnStyle}>请先创建店铺和商品，再导入库存。</div></section> : null}
 
-      {successMessage ? <section style={successStyle}>{successMessage}</section> : null}
 
       <section style={cardStyle}>
         <h2 style={{ marginTop: 0 }}>筛选条件</h2>
@@ -284,7 +287,6 @@ const modalOverlayStyle: React.CSSProperties = { position: 'fixed', inset: 0, ba
 const modalCardStyle: React.CSSProperties = { width: 'min(760px, 100%)', maxHeight: 'calc(100vh - 48px)', overflowY: 'auto', padding: 24, borderRadius: 24, border: '1px solid rgba(148,163,184,.16)', background: 'var(--card)', boxShadow: '0 24px 64px rgba(2,6,23,.4)' };
 const statStyle: React.CSSProperties = { padding: 18, borderRadius: 16, background: 'rgba(255,255,255,.03)', border: '1px solid rgba(148,163,184,.12)', display: 'grid', gap: 8 };
 const warnStyle: React.CSSProperties = { padding: 16, borderRadius: 14, background: 'rgba(251,191,36,.1)', color: '#fcd34d' };
-const successStyle: React.CSSProperties = { padding: 16, borderRadius: 14, background: 'rgba(16,185,129,.12)', color: '#86efac', border: '1px solid rgba(16,185,129,.22)' };
 const inputStyle: React.CSSProperties = { padding: '12px 14px', borderRadius: 12, border: '1px solid rgba(148,163,184,.16)', background: 'rgba(255,255,255,.03)', color: 'var(--foreground)' };
 const textareaStyle: React.CSSProperties = { ...inputStyle, resize: 'vertical' };
 const primaryButtonStyle: React.CSSProperties = { width: 'fit-content', padding: '12px 16px', borderRadius: 12, border: 'none', background: 'var(--primary)', color: '#fff', fontWeight: 700, cursor: 'pointer' };

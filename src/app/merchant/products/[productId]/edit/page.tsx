@@ -1,11 +1,15 @@
 import { getMerchantProductDetail, updateMerchantProductAction } from '@/app/merchant/actions';
+import ActionToast from '@/components/action-toast';
+import { CoverImageUploadField, UsageGuideImagesUploadField } from '../../ProductImageUploadFields';
 
 type MerchantProductEditPageProps = {
   params: Promise<{ productId: string }>;
+  searchParams: Promise<{ success?: string; error?: string }>;
 };
 
-export default async function MerchantProductEditPage({ params }: MerchantProductEditPageProps) {
+export default async function MerchantProductEditPage({ params, searchParams }: MerchantProductEditPageProps) {
   const { productId } = await params;
+  const { success = '', error = '' } = await searchParams;
 
   async function submitProductForm(formData: FormData) {
     'use server';
@@ -26,6 +30,7 @@ export default async function MerchantProductEditPage({ params }: MerchantProduc
 
   return (
     <main style={{ display: 'grid', gap: 24 }}>
+      <ActionToast success={success} error={error} />
       <section style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 20, flexWrap: 'wrap' }}>
         <div>
           <h1 style={{ marginTop: 0, marginBottom: 8, fontSize: 32 }}>编辑商品</h1>
@@ -36,6 +41,7 @@ export default async function MerchantProductEditPage({ params }: MerchantProduc
 
       <form action={submitProductForm} encType="multipart/form-data" style={{ display: 'grid', gap: 24 }}>
         <input type="hidden" name="productId" value={product.id} />
+        <input type="hidden" name="returnTo" value={`/merchant/products/${product.id}/edit`} />
 
         <section style={cardStyle}>
           <h2 style={{ marginTop: 0 }}>基础信息</h2>
@@ -59,11 +65,7 @@ export default async function MerchantProductEditPage({ params }: MerchantProduc
                   {result.categories.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
                 </select>
               </label>
-              <label style={{ display: 'grid', gap: 8 }}>
-                <span>封面图片（可上传或粘贴 URL）</span>
-                <input name="coverUrl" defaultValue={product.cover_url ?? ''} placeholder="https://...（可选）" style={inputStyle} />
-                <input name="coverFile" type="file" accept="image/*" style={inputStyle} />
-              </label>
+              <CoverImageUploadField existingCoverUrl={product.cover_url ?? ''} />
             </div>
 
             <label style={{ display: 'grid', gap: 8 }}>
@@ -101,8 +103,8 @@ export default async function MerchantProductEditPage({ params }: MerchantProduc
             <label style={{ display: 'grid', gap: 8 }}>
               <span>使用说明</span>
               <textarea name="usageGuide" defaultValue={product.usage_guide ?? ''} rows={4} style={textareaStyle} />
-              <input name="usageGuideImages" type="file" accept="image/*" multiple style={inputStyle} />
             </label>
+            <UsageGuideImagesUploadField existingUsageGuide={product.usage_guide ?? ''} />
             <label style={{ display: 'grid', gap: 8 }}><span>购买须知</span><textarea name="noticeText" defaultValue={product.notice_text ?? ''} rows={4} style={textareaStyle} /></label>
             <label style={{ display: 'grid', gap: 8 }}><span>售后规则</span><textarea name="refundPolicy" defaultValue={product.refund_policy ?? ''} rows={4} style={textareaStyle} /></label>
           </div>

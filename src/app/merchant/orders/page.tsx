@@ -1,8 +1,9 @@
 import { appendMerchantOrderRemarkAction, closeMerchantOrderAction, getMerchantOrders, redeliverMerchantOrderAction, triggerMerchantOrderPaymentAction } from '@/app/merchant/actions';
+import ActionToast from '@/components/action-toast';
 import { formatBeijingDateTime } from '@/lib/utils';
 
 type MerchantOrdersPageProps = {
-  searchParams: Promise<{ keyword?: string; status?: string; buyerContact?: string; closeOrderId?: string; success?: string }>;
+  searchParams: Promise<{ keyword?: string; status?: string; buyerContact?: string; closeOrderId?: string; success?: string; error?: string }>;
 };
 
 export default async function MerchantOrdersPage({ searchParams }: MerchantOrdersPageProps) {
@@ -15,6 +16,7 @@ export default async function MerchantOrdersPage({ searchParams }: MerchantOrder
     if (merged.buyerContact) params.set('buyerContact', merged.buyerContact);
     if (merged.closeOrderId) params.set('closeOrderId', merged.closeOrderId);
     if (merged.success) params.set('success', merged.success);
+    if (merged.error) params.set('error', merged.error);
     const query = params.toString();
     return query ? `/merchant/orders?${query}` : '/merchant/orders';
   };
@@ -22,6 +24,7 @@ export default async function MerchantOrdersPage({ searchParams }: MerchantOrder
   const closeOrderId = String(filters.closeOrderId || '').trim();
   const closeTargetOrder = closeOrderId ? result.ok && result.orders.find((item) => item.id === closeOrderId) : null;
   const successMessage = String(filters.success || '').trim();
+  const errorMessage = String(filters.error || '').trim();
 
   async function submitPayAction(formData: FormData) {
     'use server';
@@ -56,6 +59,7 @@ export default async function MerchantOrdersPage({ searchParams }: MerchantOrder
 
   return (
     <main style={{ display: 'grid', gap: 24 }}>
+      <ActionToast success={successMessage} error={errorMessage} />
       <section style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 20, flexWrap: 'wrap' }}>
         <div>
           <h1 style={{ margin: '0 0 8px', fontSize: 32 }}>订单管理</h1>
@@ -63,7 +67,6 @@ export default async function MerchantOrdersPage({ searchParams }: MerchantOrder
         </div>
       </section>
 
-      {successMessage ? <section style={successStyle}>{successMessage}</section> : null}
 
       <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16 }}>
         <StatCard label="订单总数" value={String(result.summary.total)} />
@@ -373,14 +376,6 @@ const emptyStateStyle: React.CSSProperties = {
   borderRadius: 14,
   color: 'var(--muted)',
   background: 'rgba(255,255,255,.03)',
-};
-
-const successStyle: React.CSSProperties = {
-  padding: 16,
-  borderRadius: 14,
-  background: 'rgba(16,185,129,.12)',
-  color: '#86efac',
-  border: '1px solid rgba(16,185,129,.22)',
 };
 
 const primaryButtonStyle: React.CSSProperties = {
