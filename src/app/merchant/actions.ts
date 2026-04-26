@@ -586,9 +586,15 @@ export async function createMerchantProductAction(formData: FormData) {
     redirect(withErrorMessage(returnTo, '购买数量范围不合法。'));
   }
 
-  const coverUrl = coverFile
-    ? (await uploadMerchantProductImage(coverFile, context.merchantProfile.id, 'cover')) || null
+  const uploadedCoverUrl = coverFile
+    ? await uploadMerchantProductImage(coverFile, context.merchantProfile.id, 'cover')
     : null;
+
+  if (coverFile && !uploadedCoverUrl) {
+    redirect(withErrorMessage(returnTo, '封面图片上传失败，请检查 Supabase Storage 配置后重试。'));
+  }
+
+  const coverUrl = uploadedCoverUrl || null;
 
   const usageGuideValue = await buildUsageGuideWithUploadedImages(usageGuide, usageGuideImageFiles, context.merchantProfile.id);
 
@@ -1243,9 +1249,15 @@ export async function updateMerchantProductAction(formData: FormData) {
     redirect(withErrorMessage(returnTo, '商品不存在或无权限编辑。'));
   }
 
-  const coverUrl = coverFile
-    ? (await uploadMerchantProductImage(coverFile, context.merchantProfile.id, 'cover')) || product.cover_url || null
-    : (product.cover_url || null);
+  const uploadedCoverUrl = coverFile
+    ? await uploadMerchantProductImage(coverFile, context.merchantProfile.id, 'cover')
+    : null;
+
+  if (coverFile && !uploadedCoverUrl) {
+    redirect(withErrorMessage(returnTo, '封面图片上传失败，请检查 Supabase Storage 配置后重试。'));
+  }
+
+  const coverUrl = uploadedCoverUrl || product.cover_url || null;
 
   const usageGuideValue = await buildUsageGuideWithUploadedImages(usageGuide, usageGuideImageFiles, context.merchantProfile.id);
 
