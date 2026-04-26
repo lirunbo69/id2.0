@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useEffect, useMemo, useState } from 'react';
+import { useActionState, useEffect, useState } from 'react';
 
 import { createOrderAndReturnAction, getAlipayPayUrl } from '@/app/shop-actions';
 
@@ -42,14 +42,27 @@ export default function ProductPageClient({ shopCode, shopName, product }: Produ
   const [state, formAction, isPending] = useActionState(createOrderAndReturnAction, initialState);
   const [showModal, setShowModal] = useState(false);
   const [payLoading, setPayLoading] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const isAutoDelivery = ['card_key', 'account_password', 'link', 'custom_text'].includes(product.delivery_type);
-  const isMobile = useMemo(() => typeof window !== 'undefined' && window.innerWidth <= 768, []);
 
   useEffect(() => {
     const prev = document.documentElement.getAttribute('data-theme');
     document.documentElement.setAttribute('data-theme', 'light');
     return () => {
       document.documentElement.setAttribute('data-theme', prev || 'dark');
+    };
+  }, []);
+
+  useEffect(() => {
+    const evaluateMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+
+    evaluateMobile();
+    window.addEventListener('resize', evaluateMobile);
+
+    return () => {
+      window.removeEventListener('resize', evaluateMobile);
     };
   }, []);
 
@@ -130,7 +143,7 @@ export default function ProductPageClient({ shopCode, shopName, product }: Produ
   }
 
   return (
-    <main style={{ maxWidth: 1100, margin: '0 auto', padding: isMobile ? '12px 10px 28px' : '32px 24px 80px', background: isMobile ? '#f1f5f9' : 'transparent' }}>
+    <main style={{ maxWidth: 1100, margin: '0 auto', padding: isMobile ? '12px 10px 28px' : '32px 24px 80px', background: isMobile ? '#f1f5f9' : 'transparent', width: '100%', overflowX: 'hidden' }}>
       <a href={`/links/${shopCode}`} style={{ color: '#2563eb', fontSize: isMobile ? 13 : 15, fontWeight: 600 }}>← 返回店铺</a>
 
       <section style={{
@@ -291,7 +304,7 @@ function ConfirmRow({ label, value, highlight = false, mono = false }: { label: 
 }
 
 const cardStyle: React.CSSProperties = { padding: 28, borderRadius: 24, border: '1px solid rgba(148,163,184,.14)', background: '#fff', boxShadow: '0 10px 24px rgba(15,23,42,.05)' };
-const panelStyle: React.CSSProperties = { padding: 20, borderRadius: 18, border: '1px solid rgba(148,163,184,.14)', background: '#fff', boxShadow: '0 8px 20px rgba(15,23,42,.05)' };
+const panelStyle: React.CSSProperties = { padding: 20, borderRadius: 18, border: '1px solid rgba(148,163,184,.14)', background: '#fff', boxShadow: '0 8px 20px rgba(15,23,42,.05)', width: '100%', maxWidth: '100%', overflow: 'hidden' };
 const infoCardStyle: React.CSSProperties = { padding: 16, borderRadius: 14, border: '1px solid rgba(148,163,184,.12)', background: '#fff' };
 const inputStyle: React.CSSProperties = { padding: '12px 14px', borderRadius: 12, border: '1px solid rgba(148,163,184,.18)', background: '#fff', color: '#0f172a', fontSize: 16 };
 const textareaStyle: React.CSSProperties = { ...inputStyle, resize: 'vertical' };
