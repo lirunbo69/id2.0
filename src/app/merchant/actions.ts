@@ -39,29 +39,36 @@ function toUploadFile(value: FormDataEntryValue | null) {
 }
 
 async function uploadMerchantProductImage(file: File, merchantId: string, folder: 'cover' | 'usage-guide') {
-  const supabase = createServiceRoleSupabaseClient();
-  const bucket = process.env.NEXT_PUBLIC_SUPABASE_PRODUCT_IMAGE_BUCKET || 'product-images';
-  const ext = file.name.includes('.') ? file.name.split('.').pop() : 'jpg';
-  const objectPath = `${merchantId}/${folder}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
+  try {
+    const supabase = createServiceRoleSupabaseClient();
+    const bucket = process.env.NEXT_PUBLIC_SUPABASE_PRODUCT_IMAGE_BUCKET || 'product-images';
+    const ext = file.name.includes('.') ? file.name.split('.').pop() : 'jpg';
+    const objectPath = `${merchantId}/${folder}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
 
-  const { error } = await supabase.storage.from(bucket).upload(objectPath, file, {
-    cacheControl: '3600',
-    upsert: false,
-    contentType: file.type || undefined,
-  });
+    const { error } = await supabase.storage.from(bucket).upload(objectPath, file, {
+      cacheControl: '3600',
+      upsert: false,
+      contentType: file.type || undefined,
+    });
 
-  if (error) {
-    throw new Error(error.message || '图片上传失败，请检查存储桶配置。');
+    if (error) {
+      console.error('uploadMerchantProductImage upload error:', error.message);
+      return null;
+    }
+
+    const { data } = supabase.storage.from(bucket).getPublicUrl(objectPath);
+    return data.publicUrl || null;
+  } catch (error) {
+    console.error('uploadMerchantProductImage unexpected error:', error);
+    return null;
   }
-
-  const { data } = supabase.storage.from(bucket).getPublicUrl(objectPath);
-  return data.publicUrl;
 }
 
 async function buildUsageGuideWithUploadedImages(usageGuideText: string, files: File[], merchantId: string) {
   if (!files.length) return usageGuideText;
 
-  const uploadedUrls = await Promise.all(files.map((file) => uploadMerchantProductImage(file, merchantId, 'usage-guide')));
+  const uploadedUrlsRaw = await Promise.all(files.map((file) => uploadMerchantProductImage(file, merchantId, 'usage-guide')));
+  const uploadedUrls = uploadedUrlsRaw.filter((url): url is string => Boolean(url));
   const imageLines = uploadedUrls.map((url, index) => `![使用说明图片${index + 1}](${url})`);
 
   return [usageGuideText, ...imageLines].filter(Boolean).join('\n\n');
@@ -491,7 +498,7 @@ export async function createMerchantProductAction(formData: FormData) {
 
   const { data: shop } = await context.supabase
     .from('shops')
-    .select('id, name')
+    .select('id, name, shop_code')
     .eq('merchant_id', context.merchantProfile.id)
     .maybeSingle();
 
@@ -536,7 +543,7 @@ export async function createMerchantProductAction(formData: FormData) {
   }
 
   const coverUrl = coverFile
-    ? await uploadMerchantProductImage(coverFile, context.merchantProfile.id, 'cover')
+    ? (await uploadMerchantProductImage(coverFile, context.merchantProfile.id, 'cover')) || coverUrlInput || null
     : (coverUrlInput || null);
 
   const usageGuideValue = await buildUsageGuideWithUploadedImages(usageGuide, usageGuideImageFiles, context.merchantProfile.id);
@@ -571,6 +578,7 @@ export async function createMerchantProductAction(formData: FormData) {
   revalidatePath('/merchant/products');
   revalidatePath('/merchant/products/new');
   revalidatePath('/merchant/inventory');
+  revalidatePath(`/links/${shop.shop_code}`);
 
   redirect(withSuccessMessage(returnTo, '发布商品成功'));
 }
@@ -1173,7 +1181,7 @@ export async function updateMerchantProductAction(formData: FormData) {
 
   const { data: shop } = await context.supabase
     .from('shops')
-    .select('id')
+    .select('id, shop_code')
     .eq('merchant_id', context.merchantProfile.id)
     .maybeSingle();
 
@@ -1228,7 +1236,7 @@ export async function updateMerchantProductAction(formData: FormData) {
 
   revalidatePath('/merchant/products');
   revalidatePath(`/merchant/products/${productId}/edit`);
-  revalidatePath(`/links/${shop.id}`);
+  revalidatePath(`/links/${shop.shop_code}`);
   return { ok: true as const, message: '商品已更新。' };
 }
 
