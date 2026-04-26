@@ -25,6 +25,7 @@ type ProductPageClientProps = {
     need_contact: boolean;
     need_remark: boolean;
     cover_url: string | null;
+  };
 };
 
 const initialState = {
