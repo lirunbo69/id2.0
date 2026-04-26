@@ -1,5 +1,6 @@
-import { duplicateMerchantProductAction, getMerchantProducts, updateMerchantProductStatusAction } from '@/app/merchant/actions';
+import { deleteMerchantProductAction, duplicateMerchantProductAction, getMerchantProducts, moveMerchantProductOrderAction, updateMerchantProductStatusAction } from '@/app/merchant/actions';
 import { formatBeijingDateTime } from '@/lib/utils';
+import DeleteProductButton from './DeleteProductButton';
 
 type MerchantProductsPageProps = {
   searchParams: Promise<{ keyword?: string; status?: string; categoryId?: string; success?: string }>;
@@ -30,6 +31,16 @@ export default async function MerchantProductsPage({ searchParams }: MerchantPro
     await duplicateMerchantProductAction(formData);
   }
 
+  async function submitMoveAction(formData: FormData) {
+    'use server';
+    await moveMerchantProductOrderAction(formData);
+  }
+
+  async function submitDeleteAction(formData: FormData) {
+    'use server';
+    await deleteMerchantProductAction(formData);
+  }
+
   if (!result.ok) {
     return (
       <main style={{ display: 'grid', gap: 24 }}>
@@ -46,7 +57,7 @@ export default async function MerchantProductsPage({ searchParams }: MerchantPro
       <section style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
         <div>
           <h1 style={{ margin: '0 0 10px', fontSize: 32 }}>商品管理</h1>
-          <p style={{ color: 'var(--muted)', margin: 0 }}>支持商品筛选、上下架、可见性切换、推荐/热卖标记和复制商品。</p>
+          <p style={{ color: 'var(--muted)', margin: 0 }}>支持商品筛选、调整前台展示顺序、上下架、可见性切换、推荐/热卖标记、复制与删除商品。</p>
         </div>
         <div style={{ display: 'flex', gap: 12 }}>
           {!result.hasShop ? <a href="/merchant/shop" style={secondaryButtonStyle}>先完善店铺设置</a> : null}
@@ -132,6 +143,34 @@ export default async function MerchantProductsPage({ searchParams }: MerchantPro
                     </td>
                     <td style={tdStyle}>
                       <div style={{ display: 'grid', gap: 8 }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0,1fr))', gap: 8 }}>
+                          <form action={submitMoveAction} style={actionRowStyle}>
+                            <input type="hidden" name="productId" value={product.id} />
+                            <input type="hidden" name="returnTo" value={buildProductsPath({ success: undefined })} />
+                            <input type="hidden" name="direction" value="up" />
+                            <button type="submit" style={actionButtonStyle}>上移</button>
+                          </form>
+                          <form action={submitMoveAction} style={actionRowStyle}>
+                            <input type="hidden" name="productId" value={product.id} />
+                            <input type="hidden" name="returnTo" value={buildProductsPath({ success: undefined })} />
+                            <input type="hidden" name="direction" value="down" />
+                            <button type="submit" style={actionButtonStyle}>下移</button>
+                          </form>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0,1fr))', gap: 8 }}>
+                          <form action={submitMoveAction} style={actionRowStyle}>
+                            <input type="hidden" name="productId" value={product.id} />
+                            <input type="hidden" name="returnTo" value={buildProductsPath({ success: undefined })} />
+                            <input type="hidden" name="direction" value="top" />
+                            <button type="submit" style={actionButtonStyle}>置顶</button>
+                          </form>
+                          <form action={submitMoveAction} style={actionRowStyle}>
+                            <input type="hidden" name="productId" value={product.id} />
+                            <input type="hidden" name="returnTo" value={buildProductsPath({ success: undefined })} />
+                            <input type="hidden" name="direction" value="bottom" />
+                            <button type="submit" style={actionButtonStyle}>置底</button>
+                          </form>
+                        </div>
                         <form action={submitStatusAction} style={actionRowStyle}>
                           <input type="hidden" name="productId" value={product.id} />
                           <input type="hidden" name="returnTo" value={buildProductsPath({ success: undefined })} />
@@ -162,6 +201,11 @@ export default async function MerchantProductsPage({ searchParams }: MerchantPro
                           <input type="hidden" name="returnTo" value={buildProductsPath({ success: undefined })} />
                           <button type="submit" style={actionButtonStyle}>复制商品</button>
                         </form>
+                        <DeleteProductButton
+                          productId={product.id}
+                          returnTo={buildProductsPath({ success: undefined })}
+                          action={submitDeleteAction}
+                        />
                       </div>
                     </td>
                   </tr>

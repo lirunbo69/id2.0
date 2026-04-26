@@ -47,7 +47,6 @@ type Props = {
 
 export default function ShopPageClient({ shop, categories, products, shopCode, activeCategory }: Props) {
   const [search, setSearch] = useState('');
-  const [showContact, setShowContact] = useState(false);
   const productRefs = useRef<Record<string, HTMLAnchorElement | null>>({});
 
   useEffect(() => {
@@ -120,20 +119,15 @@ export default function ShopPageClient({ shop, categories, products, shopCode, a
         </div>
         <div style={{ display: 'flex', gap: 10, marginTop: 14, flexWrap: 'wrap' }}>
           <Link href="/order/query" style={actionBtnOutlineStyle}>查询订单</Link>
-          <button type="button" onClick={() => setShowContact(!showContact)} style={actionBtnSolidStyle}>
-            {showContact ? '收起客服信息' : '联系商家客服'}
-          </button>
         </div>
-        {showContact && (
-          <div style={contactDropdownStyle}>
-            <ContactRow label="QQ" value={shop.contact_qq} />
-            <ContactRow label="微信" value={shop.contact_wechat} />
-            <ContactRow label="Telegram" value={shop.contact_telegram} />
-            {shop.customer_service_url && (
-              <a href={shop.customer_service_url} target="_blank" rel="noreferrer" style={{ color: '#2563eb', fontSize: 14, marginTop: 4 }}>打开客服链接</a>
-            )}
-          </div>
-        )}
+        <div style={contactDropdownStyle}>
+          <ContactRow label="QQ" value={shop.contact_qq} />
+          <ContactRow label="微信" value={shop.contact_wechat} />
+          <ContactRow label="Telegram" value={shop.contact_telegram} />
+          {shop.customer_service_url && (
+            <a href={shop.customer_service_url} target="_blank" rel="noreferrer" style={{ color: '#2563eb', fontSize: 14, marginTop: 4 }}>打开客服链接</a>
+          )}
+        </div>
         {shop.announcement && (
           <div style={announcementStyle}>
             <strong style={{ fontSize: 13, color: '#0f172a' }}>店铺公告</strong>
@@ -181,7 +175,11 @@ export default function ShopPageClient({ shop, categories, products, shopCode, a
                 <div style={{ fontSize: 20, fontWeight: 800, color: '#0f172a' }}>¥{Number(p.price).toFixed(2)}</div>
               </div>
               <div style={productThumbStyle}>
-                <span style={thumbLetterStyle}>{p.name.slice(0, 2)}</span>
+                {p.cover_url ? (
+                  <img src={p.cover_url} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <span style={thumbLetterStyle}>{p.name.slice(0, 2)}</span>
+                )}
               </div>
             </Link>
           )) : (
@@ -246,7 +244,7 @@ const sectionStyle: React.CSSProperties = { marginBottom: 18 };
 const sectionTitleStyle: React.CSSProperties = { margin: '0 0 12px', fontSize: 18, fontWeight: 800, color: '#0f172a', paddingLeft: 10, borderLeft: '3px solid #2563eb' };
 
 const productRowStyle: React.CSSProperties = { display: 'flex', gap: 16, alignItems: 'center', padding: 16, borderRadius: 18, background: '#fff', border: '1px solid rgba(148,163,184,.12)', boxShadow: '0 6px 18px rgba(15,23,42,.03)', textDecoration: 'none' };
-const productThumbStyle: React.CSSProperties = { width: 64, height: 64, borderRadius: 14, background: 'linear-gradient(135deg,rgba(148,163,184,.08),rgba(99,102,241,.08))', display: 'grid', placeItems: 'center', flexShrink: 0 };
+const productThumbStyle: React.CSSProperties = { width: 64, height: 64, borderRadius: 14, background: 'linear-gradient(135deg,rgba(148,163,184,.08),rgba(99,102,241,.08))', display: 'grid', placeItems: 'center', flexShrink: 0, overflow: 'hidden' };
 const thumbLetterStyle: React.CSSProperties = { fontSize: 20, fontWeight: 800, color: '#4f46e5' };
 
 const autoTagStyle: React.CSSProperties = { display: 'inline-flex', padding: '4px 8px', borderRadius: 6, background: 'rgba(59,130,246,.08)', color: '#2563eb', fontSize: 12, fontWeight: 700 };

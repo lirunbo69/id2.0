@@ -45,7 +45,7 @@ export default async function MerchantProductCreatePage({ searchParams }: { sear
           当前表单会直接写入 `products` 表，现已支持选择真实商品分类。
         </p>
 
-        <form action={submitProductForm} style={{ display: 'grid', gap: 18, marginTop: 24 }}>
+        <form action={submitProductForm} encType="multipart/form-data" style={{ display: 'grid', gap: 18, marginTop: 24 }}>
           <input type="hidden" name="returnTo" value="/merchant/products/new" />
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 16 }}>
             <label style={{ display: 'grid', gap: 8 }}>
@@ -69,8 +69,9 @@ export default async function MerchantProductCreatePage({ searchParams }: { sear
               </select>
             </label>
             <label style={{ display: 'grid', gap: 8 }}>
-              <span>封面图片 URL</span>
-              <input name="coverUrl" style={inputStyle} />
+              <span>封面图片（可上传或粘贴 URL）</span>
+              <input name="coverUrl" placeholder="https://...（可选）" style={inputStyle} />
+              <input name="coverFile" type="file" accept="image/*" style={inputStyle} />
             </label>
           </div>
 
@@ -110,7 +111,11 @@ export default async function MerchantProductCreatePage({ searchParams }: { sear
             </select>
           </label>
 
-          <label style={{ display: 'grid', gap: 8 }}><span>使用说明</span><textarea name="usageGuide" rows={4} style={textareaStyle} /></label>
+          <label style={{ display: 'grid', gap: 8 }}>
+            <span>使用说明</span>
+            <textarea name="usageGuide" rows={4} style={textareaStyle} />
+            <input name="usageGuideImages" type="file" accept="image/*" multiple style={inputStyle} />
+          </label>
           <label style={{ display: 'grid', gap: 8 }}><span>购买须知</span><textarea name="noticeText" rows={4} style={textareaStyle} /></label>
           <label style={{ display: 'grid', gap: 8 }}><span>售后规则</span><textarea name="refundPolicy" rows={4} style={textareaStyle} /></label>
 

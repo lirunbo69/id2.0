@@ -34,7 +34,7 @@ export default async function MerchantProductEditPage({ params }: MerchantProduc
         <a href="/merchant/products" style={secondaryButtonStyle}>返回商品列表</a>
       </section>
 
-      <form action={submitProductForm} style={{ display: 'grid', gap: 24 }}>
+      <form action={submitProductForm} encType="multipart/form-data" style={{ display: 'grid', gap: 24 }}>
         <input type="hidden" name="productId" value={product.id} />
 
         <section style={cardStyle}>
@@ -60,8 +60,9 @@ export default async function MerchantProductEditPage({ params }: MerchantProduc
                 </select>
               </label>
               <label style={{ display: 'grid', gap: 8 }}>
-                <span>封面图片 URL</span>
-                <input name="coverUrl" defaultValue={product.cover_url ?? ''} style={inputStyle} />
+                <span>封面图片（可上传或粘贴 URL）</span>
+                <input name="coverUrl" defaultValue={product.cover_url ?? ''} placeholder="https://...（可选）" style={inputStyle} />
+                <input name="coverFile" type="file" accept="image/*" style={inputStyle} />
               </label>
             </div>
 
@@ -97,7 +98,11 @@ export default async function MerchantProductEditPage({ params }: MerchantProduc
               </select>
             </label>
 
-            <label style={{ display: 'grid', gap: 8 }}><span>使用说明</span><textarea name="usageGuide" defaultValue={product.usage_guide ?? ''} rows={4} style={textareaStyle} /></label>
+            <label style={{ display: 'grid', gap: 8 }}>
+              <span>使用说明</span>
+              <textarea name="usageGuide" defaultValue={product.usage_guide ?? ''} rows={4} style={textareaStyle} />
+              <input name="usageGuideImages" type="file" accept="image/*" multiple style={inputStyle} />
+            </label>
             <label style={{ display: 'grid', gap: 8 }}><span>购买须知</span><textarea name="noticeText" defaultValue={product.notice_text ?? ''} rows={4} style={textareaStyle} /></label>
             <label style={{ display: 'grid', gap: 8 }}><span>售后规则</span><textarea name="refundPolicy" defaultValue={product.refund_policy ?? ''} rows={4} style={textareaStyle} /></label>
           </div>

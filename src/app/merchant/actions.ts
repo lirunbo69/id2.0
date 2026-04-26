@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
 import { createAdminClient } from '@/lib/supabase/admin';
-import { createServerSupabaseClient } from '@/lib/supabase';
+import { createServerSupabaseClient, createServiceRoleSupabaseClient } from '@/lib/supabase';
 import { appendOrderRemark, closeOrderAndRelease, processOrderPayment } from '@/lib/order-flow';
 
 function slugify(input: string) {
@@ -30,6 +30,41 @@ function withSuccessMessage(path: string, message: string) {
   const params = new URLSearchParams(queryString);
   params.set('success', message);
   return `${pathname}?${params.toString()}`;
+}
+
+function toUploadFile(value: FormDataEntryValue | null) {
+  if (!value || typeof value === 'string') return null;
+  if (!('size' in value) || value.size <= 0) return null;
+  return value;
+}
+
+async function uploadMerchantProductImage(file: File, merchantId: string, folder: 'cover' | 'usage-guide') {
+  const supabase = createServiceRoleSupabaseClient();
+  const bucket = process.env.NEXT_PUBLIC_SUPABASE_PRODUCT_IMAGE_BUCKET || 'product-images';
+  const ext = file.name.includes('.') ? file.name.split('.').pop() : 'jpg';
+  const objectPath = `${merchantId}/${folder}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
+
+  const { error } = await supabase.storage.from(bucket).upload(objectPath, file, {
+    cacheControl: '3600',
+    upsert: false,
+    contentType: file.type || undefined,
+  });
+
+  if (error) {
+    throw new Error(error.message || '图片上传失败，请检查存储桶配置。');
+  }
+
+  const { data } = supabase.storage.from(bucket).getPublicUrl(objectPath);
+  return data.publicUrl;
+}
+
+async function buildUsageGuideWithUploadedImages(usageGuideText: string, files: File[], merchantId: string) {
+  if (!files.length) return usageGuideText;
+
+  const uploadedUrls = await Promise.all(files.map((file) => uploadMerchantProductImage(file, merchantId, 'usage-guide')));
+  const imageLines = uploadedUrls.map((url, index) => `![使用说明图片${index + 1}](${url})`);
+
+  return [usageGuideText, ...imageLines].filter(Boolean).join('\n\n');
 }
 
 async function findAuthUserIdByEmail(email: string) {
@@ -476,7 +511,9 @@ export async function createMerchantProductAction(formData: FormData) {
   const noticeText = String(formData.get('noticeText') || '').trim();
   const refundPolicy = String(formData.get('refundPolicy') || '').trim();
   const deliveryType = String(formData.get('deliveryType') || 'card_key').trim();
-  const coverUrl = String(formData.get('coverUrl') || '').trim();
+  const coverUrlInput = String(formData.get('coverUrl') || '').trim();
+  const coverFile = toUploadFile(formData.get('coverFile'));
+  const usageGuideImageFiles = formData.getAll('usageGuideImages').map(toUploadFile).filter((file): file is File => Boolean(file));
   const priceValue = Number(formData.get('price') || 0);
   const minPurchaseQty = Number(formData.get('minPurchaseQty') || 1);
   const maxPurchaseQty = Number(formData.get('maxPurchaseQty') || 1);
@@ -498,6 +535,12 @@ export async function createMerchantProductAction(formData: FormData) {
     return { ok: false as const, message: '购买数量范围不合法。' };
   }
 
+  const coverUrl = coverFile
+    ? await uploadMerchantProductImage(coverFile, context.merchantProfile.id, 'cover')
+    : (coverUrlInput || null);
+
+  const usageGuideValue = await buildUsageGuideWithUploadedImages(usageGuide, usageGuideImageFiles, context.merchantProfile.id);
+
   const { error } = await context.supabase.from('products').insert({
     shop_id: shop.id,
     category_id: categoryIdRaw || null,
@@ -505,11 +548,11 @@ export async function createMerchantProductAction(formData: FormData) {
     subtitle: subtitle || null,
     summary: summary || null,
     detail_html: detailHtml || null,
-    usage_guide: usageGuide || null,
+    usage_guide: usageGuideValue || null,
     notice_text: noticeText || null,
     refund_policy: refundPolicy || null,
     delivery_type: deliveryType,
-    cover_url: coverUrl || null,
+    cover_url: coverUrl,
     price: priceValue,
     min_purchase_qty: minPurchaseQty,
     max_purchase_qty: maxPurchaseQty,
@@ -808,6 +851,153 @@ export async function updateMerchantProductStatusAction(formData: FormData) {
   redirect(withSuccessMessage(returnTo, successMessage));
 }
 
+export async function moveMerchantProductOrderAction(formData: FormData) {
+  const context = await getCurrentMerchantContext();
+  if (!context.ok) {
+    return context;
+  }
+
+  const productId = String(formData.get('productId') || '').trim();
+  const direction = String(formData.get('direction') || '').trim();
+  const returnTo = String(formData.get('returnTo') || '/merchant/products').trim() || '/merchant/products';
+
+  if (!productId || !['up', 'down', 'top', 'bottom'].includes(direction)) {
+    return { ok: false as const, message: '缺少排序参数。' };
+  }
+
+  const { data: shop } = await context.supabase
+    .from('shops')
+    .select('id, shop_code')
+    .eq('merchant_id', context.merchantProfile.id)
+    .maybeSingle();
+
+  if (!shop) {
+    return { ok: false as const, message: '请先完成店铺设置。' };
+  }
+
+  const { data: products, error: listError } = await context.supabase
+    .from('products')
+    .select('id, created_at')
+    .eq('shop_id', shop.id)
+    .order('created_at', { ascending: false });
+
+  if (listError || !products?.length) {
+    return { ok: false as const, message: listError?.message || '商品列表为空。' };
+  }
+
+  const currentIndex = products.findIndex((item) => item.id === productId);
+  if (currentIndex === -1) {
+    return { ok: false as const, message: '商品不存在或无权限操作。' };
+  }
+
+  if (direction === 'top' && currentIndex > 0) {
+    const topDate = new Date(products[0].created_at || new Date().toISOString());
+    const nextDate = new Date(topDate.getTime() + 1000);
+    const { error } = await context.supabase.from('products').update({ created_at: nextDate.toISOString() }).eq('id', productId).eq('shop_id', shop.id);
+    if (error) {
+      return { ok: false as const, message: error.message };
+    }
+    revalidatePath('/merchant/products');
+    revalidatePath(`/links/${shop.shop_code}`);
+    redirect(withSuccessMessage(returnTo, '商品顺序已更新'));
+  }
+
+  if (direction === 'bottom' && currentIndex < products.length - 1) {
+    const bottomDate = new Date(products[products.length - 1].created_at || new Date().toISOString());
+    const prevDate = new Date(bottomDate.getTime() - 1000);
+    const { error } = await context.supabase.from('products').update({ created_at: prevDate.toISOString() }).eq('id', productId).eq('shop_id', shop.id);
+    if (error) {
+      return { ok: false as const, message: error.message };
+    }
+    revalidatePath('/merchant/products');
+    revalidatePath(`/links/${shop.shop_code}`);
+    redirect(withSuccessMessage(returnTo, '商品顺序已更新'));
+  }
+
+  const neighborIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+  if (neighborIndex < 0 || neighborIndex >= products.length) {
+    redirect(withSuccessMessage(returnTo, '当前已在边界位置'));
+  }
+
+  const current = products[currentIndex];
+  const neighbor = products[neighborIndex];
+
+  const [{ error: e1 }, { error: e2 }] = await Promise.all([
+    context.supabase.from('products').update({ created_at: neighbor.created_at }).eq('id', current.id).eq('shop_id', shop.id),
+    context.supabase.from('products').update({ created_at: current.created_at }).eq('id', neighbor.id).eq('shop_id', shop.id),
+  ]);
+
+  if (e1 || e2) {
+    return { ok: false as const, message: e1?.message || e2?.message || '更新排序失败。' };
+  }
+
+  revalidatePath('/merchant/products');
+  revalidatePath(`/links/${shop.shop_code}`);
+  redirect(withSuccessMessage(returnTo, '商品顺序已更新'));
+}
+
+export async function deleteMerchantProductAction(formData: FormData) {
+  const context = await getCurrentMerchantContext();
+  if (!context.ok) {
+    return context;
+  }
+
+  const productId = String(formData.get('productId') || '').trim();
+  const returnTo = String(formData.get('returnTo') || '/merchant/products').trim() || '/merchant/products';
+  if (!productId) {
+    return { ok: false as const, message: '缺少商品 ID。' };
+  }
+
+  const { data: shop } = await context.supabase
+    .from('shops')
+    .select('id, shop_code')
+    .eq('merchant_id', context.merchantProfile.id)
+    .maybeSingle();
+
+  if (!shop) {
+    return { ok: false as const, message: '请先完成店铺设置。' };
+  }
+
+  const { data: product, error: productError } = await context.supabase
+    .from('products')
+    .select('id, shop_id, name')
+    .eq('id', productId)
+    .maybeSingle();
+
+  if (productError || !product || product.shop_id !== shop.id) {
+    return { ok: false as const, message: '商品不存在或无权限删除。' };
+  }
+
+  const { count: orderCount, error: orderError } = await context.supabase
+    .from('orders')
+    .select('id', { count: 'exact', head: true })
+    .eq('product_id', productId);
+
+  if (orderError) {
+    return { ok: false as const, message: orderError.message };
+  }
+
+  if ((orderCount || 0) > 0) {
+    return { ok: false as const, message: '该商品已有订单，不能删除。可先下架并隐藏。' };
+  }
+
+  const { error: inventoryError } = await context.supabase.from('inventories').delete().eq('product_id', productId);
+  if (inventoryError) {
+    return { ok: false as const, message: inventoryError.message };
+  }
+
+  const { error } = await context.supabase.from('products').delete().eq('id', productId).eq('shop_id', shop.id);
+
+  if (error) {
+    return { ok: false as const, message: error.message };
+  }
+
+  revalidatePath('/merchant/products');
+  revalidatePath('/merchant/inventory');
+  revalidatePath(`/links/${shop.shop_code}`);
+  redirect(withSuccessMessage(returnTo, `商品「${product.name}」已删除`));
+}
+
 export async function duplicateMerchantProductAction(formData: FormData) {
   const context = await getCurrentMerchantContext();
   if (!context.ok) {
@@ -956,7 +1146,9 @@ export async function updateMerchantProductAction(formData: FormData) {
   const noticeText = String(formData.get('noticeText') || '').trim();
   const refundPolicy = String(formData.get('refundPolicy') || '').trim();
   const deliveryType = String(formData.get('deliveryType') || 'card_key').trim();
-  const coverUrl = String(formData.get('coverUrl') || '').trim();
+  const coverUrlInput = String(formData.get('coverUrl') || '').trim();
+  const coverFile = toUploadFile(formData.get('coverFile'));
+  const usageGuideImageFiles = formData.getAll('usageGuideImages').map(toUploadFile).filter((file): file is File => Boolean(file));
   const priceValue = Number(formData.get('price') || 0);
   const minPurchaseQty = Number(formData.get('minPurchaseQty') || 1);
   const maxPurchaseQty = Number(formData.get('maxPurchaseQty') || 1);
@@ -999,6 +1191,12 @@ export async function updateMerchantProductAction(formData: FormData) {
     return { ok: false as const, message: '商品不存在或无权限编辑。' };
   }
 
+  const coverUrl = coverFile
+    ? await uploadMerchantProductImage(coverFile, context.merchantProfile.id, 'cover')
+    : (coverUrlInput || null);
+
+  const usageGuideValue = await buildUsageGuideWithUploadedImages(usageGuide, usageGuideImageFiles, context.merchantProfile.id);
+
   const { error } = await context.supabase
     .from('products')
     .update({
@@ -1007,11 +1205,11 @@ export async function updateMerchantProductAction(formData: FormData) {
       subtitle: subtitle || null,
       summary: summary || null,
       detail_html: detailHtml || null,
-      usage_guide: usageGuide || null,
+      usage_guide: usageGuideValue || null,
       notice_text: noticeText || null,
       refund_policy: refundPolicy || null,
       delivery_type: deliveryType,
-      cover_url: coverUrl || null,
+      cover_url: coverUrl,
       price: priceValue,
       min_purchase_qty: minPurchaseQty,
       max_purchase_qty: maxPurchaseQty,

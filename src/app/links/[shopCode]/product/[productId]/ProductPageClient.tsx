@@ -24,7 +24,7 @@ type ProductPageClientProps = {
     max_purchase_qty: number;
     need_contact: boolean;
     need_remark: boolean;
-  };
+    cover_url: string | null;
 };
 
 const initialState = {
@@ -129,37 +129,47 @@ export default function ProductPageClient({ shopCode, shopName, product }: Produ
   }
 
   return (
-    <main style={{ maxWidth: 1100, margin: '0 auto', padding: '32px 24px 80px' }}>
-      <a href={`/links/${shopCode}`} style={{ color: '#2563eb' }}>← 返回店铺</a>
-      <section style={{ ...cardStyle, marginTop: 20 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1.4fr .9fr', gap: 24 }}>
-          <div>
-            <h1 style={{ marginTop: 0, color: '#0f172a' }}>{product.name}</h1>
-            <p style={{ color: '#64748b', lineHeight: 1.8 }}>{product.subtitle || product.summary || '暂无描述'}</p>
-            <div style={{ fontSize: 32, fontWeight: 700, margin: '16px 0', color: '#0f172a' }}>¥{Number(product.price).toFixed(2)}</div>
-            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 20 }}>
-              <span style={pillStyle}>店铺：{shopName}</span>
-              <span style={pillStyle}>库存：{product.stock_count}</span>
-              <span style={pillStyle}>已售：{product.sold_count}</span>
-              <span style={{ ...pillStyle, background: isAutoDelivery ? 'rgba(16,185,129,.12)' : 'rgba(251,191,36,.14)', color: isAutoDelivery ? '#059669' : '#d97706' }}>
-                {isAutoDelivery ? '自动发货' : '人工发货'}
-              </span>
-            </div>
+    <main style={{ maxWidth: 1100, margin: '0 auto', padding: isMobile ? '12px 10px 28px' : '32px 24px 80px', background: isMobile ? '#f1f5f9' : 'transparent' }}>
+      <a href={`/links/${shopCode}`} style={{ color: '#2563eb', fontSize: isMobile ? 13 : 15, fontWeight: 600 }}>← 返回店铺</a>
 
-            <div style={{ display: 'grid', gap: 16 }}>
-              <section style={infoCardStyle}><strong>商品详情</strong><div style={{ color: '#64748b', marginTop: 8, lineHeight: 1.8 }}>{product.detail_html || '暂无详情'}</div></section>
-              <section style={infoCardStyle}><strong>使用说明</strong><div style={{ color: '#64748b', marginTop: 8, lineHeight: 1.8 }}>{product.usage_guide || '暂无说明'}</div></section>
-              <section style={infoCardStyle}><strong>购买须知</strong><div style={{ color: '#64748b', marginTop: 8, lineHeight: 1.8 }}>{product.notice_text || '暂无购买须知'}</div></section>
-              <section style={infoCardStyle}><strong>售后规则</strong><div style={{ color: '#64748b', marginTop: 8, lineHeight: 1.8 }}>{product.refund_policy || '暂无售后规则'}</div></section>
-            </div>
+      <section style={{
+        ...cardStyle,
+        marginTop: 12,
+        padding: isMobile ? 10 : 28,
+        borderRadius: isMobile ? 16 : 24,
+        border: isMobile ? 'none' : cardStyle.border,
+        boxShadow: isMobile ? 'none' : cardStyle.boxShadow,
+      }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.4fr .9fr', gap: isMobile ? 12 : 24 }}>
+          <div>
+            {product.cover_url ? (
+              <div style={{ marginBottom: 10, borderRadius: isMobile ? 12 : 16, overflow: 'hidden', border: '1px solid rgba(148,163,184,.14)', background: '#fff' }}>
+                <img src={product.cover_url} alt={product.name} style={{ width: '100%', maxHeight: isMobile ? 260 : 320, objectFit: 'cover', display: 'block' }} />
+              </div>
+            ) : null}
+
+            <section style={{ ...infoCardStyle, padding: isMobile ? 14 : 18 }}>
+              <h1 style={{ margin: 0, color: '#0f172a', fontSize: isMobile ? 28 : 32, lineHeight: 1.25, fontWeight: 800 }}>{product.name}</h1>
+              <p style={{ color: '#64748b', lineHeight: 1.7, margin: '10px 0 0' }}>{product.subtitle || product.summary || '暂无描述'}</p>
+              <div style={{ fontSize: isMobile ? 42 : 32, fontWeight: 800, margin: '12px 0 0', color: '#ef4444', lineHeight: 1 }}>¥{Number(product.price).toFixed(2)}</div>
+
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 12 }}>
+                <span style={pillStyle}>店铺：{shopName}</span>
+                <span style={pillStyle}>库存：{product.stock_count}</span>
+                <span style={pillStyle}>已售：{product.sold_count}</span>
+                <span style={{ ...pillStyle, background: isAutoDelivery ? 'rgba(16,185,129,.12)' : 'rgba(251,191,36,.14)', color: isAutoDelivery ? '#059669' : '#d97706' }}>
+                  {isAutoDelivery ? '自动发货' : '人工发货'}
+                </span>
+              </div>
+            </section>
           </div>
 
-          <form action={formAction} style={{ ...panelStyle, display: 'grid', gap: 14, alignSelf: 'start' }}>
+          <form action={formAction} style={{ ...panelStyle, display: 'grid', gap: 14, alignSelf: 'start', padding: isMobile ? 14 : 20 }}>
             <input type="hidden" name="shopCode" value={shopCode} />
             <input type="hidden" name="productId" value={product.id} />
             <div>
-              <h3 style={{ margin: '0 0 8px', color: '#0f172a' }}>立即下单</h3>
-              <div style={{ color: '#64748b', fontSize: 13, lineHeight: 1.7 }}>
+              <h3 style={{ margin: '0 0 8px', color: '#0f172a', fontSize: isMobile ? 24 : 22 }}>立即下单</h3>
+              <div style={{ color: '#64748b', fontSize: isMobile ? 14 : 13, lineHeight: 1.7 }}>
                 {isAutoDelivery
                   ? '支付成功后系统将自动发货，订单页可直接查看发货结果。'
                   : '支付成功后进入待处理状态，请等待商家人工发货。'}
@@ -176,12 +186,24 @@ export default function ProductPageClient({ shopCode, shopName, product }: Produ
             </label>
             <label style={{ display: 'grid', gap: 8 }}>
               <span style={{ color: '#0f172a', fontWeight: 700 }}>备注{product.need_remark ? '（必填）' : '（选填）'}</span>
-              <textarea name="remark" rows={4} required={product.need_remark} style={textareaStyle} />
+              <textarea name="remark" rows={isMobile ? 3 : 4} required={product.need_remark} style={textareaStyle} />
             </label>
-            <button type="submit" style={{ ...primaryButton, opacity: isPending ? 0.7 : 1 }} disabled={isPending}>
+            <button type="submit" style={{ ...primaryButton, opacity: isPending ? 0.7 : 1, padding: isMobile ? '14px 16px' : primaryButton.padding, fontSize: isMobile ? 17 : 15 }} disabled={isPending}>
               {isPending ? '提交中...' : '创建订单'}
             </button>
           </form>
+        </div>
+
+        <div style={{ display: 'grid', gap: 12, marginTop: 12 }}>
+          <section style={infoCardStyle}><strong>商品详情</strong><div style={{ color: '#64748b', marginTop: 8, lineHeight: 1.8 }}>{product.detail_html || '暂无详情'}</div></section>
+          <section style={infoCardStyle}>
+            <strong>使用说明</strong>
+            <div style={{ color: '#64748b', marginTop: 8, lineHeight: 1.8 }}>
+              {renderUsageGuideContent(product.usage_guide)}
+            </div>
+          </section>
+          <section style={infoCardStyle}><strong>购买须知</strong><div style={{ color: '#64748b', marginTop: 8, lineHeight: 1.8 }}>{product.notice_text || '暂无购买须知'}</div></section>
+          <section style={infoCardStyle}><strong>售后规则</strong><div style={{ color: '#64748b', marginTop: 8, lineHeight: 1.8 }}>{product.refund_policy || '暂无售后规则'}</div></section>
         </div>
       </section>
 
@@ -216,6 +238,38 @@ export default function ProductPageClient({ shopCode, shopName, product }: Produ
   );
 }
 
+function renderUsageGuideContent(content: string | null) {
+  if (!content) {
+    return '暂无说明';
+  }
+
+  const lines = content.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  if (!lines.length) {
+    return '暂无说明';
+  }
+
+  return (
+    <div style={{ display: 'grid', gap: 10 }}>
+      {lines.map((line, index) => {
+        const match = line.match(/^!\[[^\]]*\]\((.+)\)$/);
+        if (match) {
+          const src = match[1].trim();
+          return (
+            <img
+              key={`${src}-${index}`}
+              src={src}
+              alt={`使用说明图片${index + 1}`}
+              style={{ width: '100%', maxHeight: 420, objectFit: 'contain', borderRadius: 12, border: '1px solid rgba(148,163,184,.14)', background: '#fff' }}
+            />
+          );
+        }
+
+        return <p key={`${line}-${index}`} style={{ margin: 0 }}>{line}</p>;
+      })}
+    </div>
+  );
+}
+
 function ConfirmRow({ label, value, highlight = false, mono = false }: { label: string; value: string; highlight?: boolean; mono?: boolean }) {
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, padding: '10px 0', borderBottom: '1px solid rgba(148,163,184,.12)' }}>
@@ -235,10 +289,10 @@ function ConfirmRow({ label, value, highlight = false, mono = false }: { label: 
   );
 }
 
-const cardStyle: React.CSSProperties = { padding: 28, borderRadius: 24, border: '1px solid rgba(148,163,184,.14)', background: '#fff' };
-const panelStyle: React.CSSProperties = { padding: 20, borderRadius: 20, border: '1px solid rgba(148,163,184,.14)', background: 'rgba(248,250,252,.95)' };
-const infoCardStyle: React.CSSProperties = { padding: 18, borderRadius: 18, border: '1px solid rgba(148,163,184,.14)', background: 'rgba(248,250,252,.95)' };
-const inputStyle: React.CSSProperties = { padding: '12px 14px', borderRadius: 12, border: '1px solid rgba(148,163,184,.18)', background: '#fff', color: '#0f172a' };
+const cardStyle: React.CSSProperties = { padding: 28, borderRadius: 24, border: '1px solid rgba(148,163,184,.14)', background: '#fff', boxShadow: '0 10px 24px rgba(15,23,42,.05)' };
+const panelStyle: React.CSSProperties = { padding: 20, borderRadius: 18, border: '1px solid rgba(148,163,184,.14)', background: '#fff', boxShadow: '0 8px 20px rgba(15,23,42,.05)' };
+const infoCardStyle: React.CSSProperties = { padding: 16, borderRadius: 14, border: '1px solid rgba(148,163,184,.12)', background: '#fff' };
+const inputStyle: React.CSSProperties = { padding: '12px 14px', borderRadius: 12, border: '1px solid rgba(148,163,184,.18)', background: '#fff', color: '#0f172a', fontSize: 16 };
 const textareaStyle: React.CSSProperties = { ...inputStyle, resize: 'vertical' };
 const primaryButton: React.CSSProperties = { padding: '12px 16px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg,#2563eb,#4f46e5)', color: '#fff', fontWeight: 700, cursor: 'pointer' };
 const pillStyle: React.CSSProperties = { display: 'inline-flex', padding: '8px 12px', borderRadius: 999, border: '1px solid rgba(148,163,184,.14)', background: 'rgba(248,250,252,.95)', color: '#334155', fontSize: 13 };
